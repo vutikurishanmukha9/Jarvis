@@ -1,8 +1,8 @@
-# 📄 Jarvis - PDF Question Answering Chatbot
+# Jarvis - PDF Question Answering Chatbot
 
 An intelligent PDF chatbot powered by OpenAI and LangChain that allows you to upload PDF documents and ask questions about their content.
 
-## ✨ Features
+## Features
 
 - **PDF Text Extraction**: Upload and process PDF documents
 - **Intelligent Q&A**: Ask natural language questions about your PDFs
@@ -12,7 +12,7 @@ An intelligent PDF chatbot powered by OpenAI and LangChain that allows you to up
 - **Source Citations**: View the exact text chunks used to generate answers
 - **Secure API Key Management**: Multiple options for API key configuration
 
-## 🚀 Quick Start
+## Quick Start
 
 ### Prerequisites
 
@@ -88,7 +88,7 @@ streamlit run app.py
 
 The application will open in your default web browser at `http://localhost:8501`
 
-## 📖 Usage
+## Usage
 
 1. **Enter API Key** (if not using secrets.toml)
    - Enter your OpenAI API key in the sidebar
@@ -111,7 +111,7 @@ The application will open in your default web browser at `http://localhost:8501`
    - Adjust temperature for creativity
    - Configure chunk sizes and retrieval parameters
 
-## 🎛️ Advanced Settings
+## Advanced Settings
 
 ### Model Selection
 - **GPT-3.5 Turbo**: Fast and cost-effective
@@ -128,7 +128,7 @@ The application will open in your default web browser at `http://localhost:8501`
 - **Chunk Overlap**: Overlap between chunks for context continuity (default: 150)
 - **Number of Chunks**: How many relevant chunks to retrieve (default: 4)
 
-## 🛠️ Troubleshooting
+## Troubleshooting
 
 ### "No text could be extracted from the PDF"
 - **Cause**: The PDF might be image-based or corrupted
@@ -150,7 +150,7 @@ The application will open in your default web browser at `http://localhost:8501`
 - **Cause**: Virtual environment not activated
 - **Solution**: Activate your virtual environment before running the app
 
-## 📦 Dependencies
+## Dependencies
 
 - **streamlit**: Web application framework
 - **PyPDF2**: PDF text extraction
@@ -161,39 +161,39 @@ The application will open in your default web browser at `http://localhost:8501`
 - **faiss-cpu**: Vector similarity search
 - **python-dotenv**: Environment variable management
 
-## 🔒 Security
+## Security
 
 - Never commit your `.streamlit/secrets.toml` file (it's in `.gitignore`)
 - Never share your OpenAI API key publicly
 - Use environment variables or secrets management in production
 - Regularly rotate your API keys
 
-## 📝 License
+## License
 
 See [LICENSE](LICENSE) file for details.
 
-## 🤝 Contributing
+## Contributing
 
 Contributions are welcome! Please feel free to submit a Pull Request.
 
-## 💡 Tips
+## Tips
 
 - **Better Questions**: Ask specific questions for better answers
 - **Context Matters**: The AI can only answer based on the PDF content
 - **Chunk Size**: Larger chunks provide more context but may be less precise
 - **Model Selection**: Use GPT-4 for complex documents requiring deep understanding
 
-## 🐛 Known Limitations
+## Known Limitations
 
 - Cannot process image-based PDFs without OCR
 - Limited to text content (doesn't analyze images, charts, or tables)
 - Answer quality depends on PDF text extraction quality
 - Large PDFs may take longer to process
 
-## 📧 Support
+## Support
 
 For issues and questions, please open an issue on the GitHub repository.
 
 ---
 
-**Built with ❤️ using Streamlit, LangChain, and OpenAI**
+**Built with Streamlit, LangChain, and OpenAI**

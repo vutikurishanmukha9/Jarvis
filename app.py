@@ -24,9 +24,9 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 # Page configuration
-st.set_page_config(page_title="PDF Chatbot", page_icon="📄")
+st.set_page_config(page_title="PDF Chatbot")
 
-st.header("📄 PDF Question Answering Chatbot")
+st.header("PDF Question Answering Chatbot")
 
 # Helper function to get file hash
 def get_file_hash(file):
@@ -35,7 +35,7 @@ def get_file_hash(file):
 
 # Sidebar for API key and file upload
 with st.sidebar:
-    st.title("📄 PDF Summarizer")
+    st.title("PDF Summarizer")
     
     # API Key Management (Hybrid Approach)
     api_key = None
@@ -44,7 +44,7 @@ with st.sidebar:
     try:
         if "OPENAI_API_KEY" in st.secrets:
             api_key = st.secrets["OPENAI_API_KEY"]
-            st.success("✅ API key loaded from secrets")
+            st.success("API key loaded from secrets")
             logger.info("API key loaded from secrets.toml")
     except FileNotFoundError:
         pass
@@ -53,7 +53,7 @@ with st.sidebar:
     if not api_key:
         api_key = os.getenv("OPENAI_API_KEY")
         if api_key:
-            st.info("ℹ️ API key loaded from environment")
+            st.info("API key loaded from environment")
             logger.info("API key loaded from environment variable")
     
     # Final fallback to UI input
@@ -72,7 +72,7 @@ with st.sidebar:
     st.markdown("---")
     
     # Model Configuration
-    st.subheader("🤖 Model Settings")
+    st.subheader("Model Settings")
     model_name = st.selectbox(
         "Select Model",
         ["gpt-3.5-turbo", "gpt-4", "gpt-4-turbo"],
@@ -105,7 +105,7 @@ with st.sidebar:
     st.markdown("---")
     
     # Advanced Settings
-    with st.expander("⚙️ Advanced Settings"):
+    with st.expander("Advanced Settings"):
         chunk_size = st.slider(
             "Chunk Size",
             min_value=500,
@@ -133,7 +133,7 @@ with st.sidebar:
         )
     
     st.markdown("---")
-    st.markdown("### 📖 How to use:")
+    st.markdown("### How to use:")
     st.markdown("1. Configure your API key")
     st.markdown("2. Upload a PDF file")
     st.markdown("3. Ask questions about the content")
@@ -148,7 +148,7 @@ if "processed_file_name" not in st.session_state:
 
 # Check if API key is provided
 if not api_key:
-    st.warning("⚠️ Please configure your OpenAI API key to continue.")
+    st.warning("Please configure your OpenAI API key to continue.")
     st.info("""
     **Three ways to configure your API key:**
     1. Create `.streamlit/secrets.toml` with `OPENAI_API_KEY = "your-key"`
@@ -166,7 +166,7 @@ if file is not None:
         
         # Only process if it's a new file (based on hash)
         if st.session_state.processed_file_hash != current_file_hash:
-            with st.spinner("📖 Reading and processing PDF..."):
+            with st.spinner("Reading and processing PDF..."):
                 logger.info(f"Processing new PDF: {file.name}")
                 
                 # Extract text from PDF
@@ -177,7 +177,7 @@ if file is not None:
                 
                 if not text.strip():
                     error_msg = "No text could be extracted from the PDF. The file might be image-based or corrupted."
-                    st.error(f"❌ {error_msg}")
+                    st.error(f"{error_msg}")
                     logger.error(f"Failed to extract text from {file.name}")
                     st.stop()
                 
@@ -198,33 +198,33 @@ if file is not None:
                     st.session_state.processed_file_hash = current_file_hash
                     st.session_state.processed_file_name = file.name
                     
-                    st.success(f"✅ PDF processed successfully! Found {len(chunks)} text chunks.")
+                    st.success(f"PDF processed successfully! Found {len(chunks)} text chunks.")
                     logger.info(f"Successfully processed {file.name}")
                 except Exception as e:
-                    st.error(f"❌ Error creating embeddings: {str(e)}")
+                    st.error(f"Error creating embeddings: {str(e)}")
                     logger.error(f"Embedding error: {str(e)}", exc_info=True)
-                    st.info("💡 This might be an API key issue. Please verify your OpenAI API key.")
+                    st.info("This might be an API key issue. Please verify your OpenAI API key.")
                     st.stop()
         else:
-            st.info(f"📄 Using cached version of: {st.session_state.processed_file_name}")
+            st.info(f"Using cached version of: {st.session_state.processed_file_name}")
         
         # Question input
         st.markdown("---")
         user_question = st.text_input(
-            "💬 Ask a question about your PDF:",
+            "Ask a question about your PDF:",
             placeholder="E.g., What is the main topic of this document?"
         ).strip()
         
         if user_question:
             # Input validation
             if len(user_question) < 5:
-                st.warning("⚠️ Please enter a more detailed question (at least 5 characters).")
+                st.warning("Please enter a more detailed question (at least 5 characters).")
             elif len(user_question) > 500:
-                st.warning("⚠️ Question is too long. Please keep it under 500 characters.")
+                st.warning("Question is too long. Please keep it under 500 characters.")
             elif st.session_state.vector_store is None:
-                st.error("❌ Please upload and process a PDF first.")
+                st.error("Please upload and process a PDF first.")
             else:
-                with st.spinner("🤔 Thinking..."):
+                with st.spinner("Thinking..."):
                     try:
                         logger.info(f"Processing question: {user_question[:100]}...")
                         
@@ -263,11 +263,11 @@ Provide a detailed and accurate answer based on the context above. If the contex
                         logger.info("Successfully generated answer")
                         
                         # Display response
-                        st.markdown("### 💡 Answer:")
+                        st.markdown("### Answer:")
                         st.write(response)
                         
                         # Show source chunks (optional)
-                        with st.expander("📚 View source text chunks"):
+                        with st.expander("View source text chunks"):
                             for i, doc in enumerate(matches, 1):
                                 st.markdown(f"**Chunk {i}:**")
                                 st.text(doc.page_content[:300] + "...")
@@ -275,7 +275,7 @@ Provide a detailed and accurate answer based on the context above. If the contex
                     
                     except ImportError as e:
                         error_msg = "Missing required dependencies. Please run: pip install -r requirements.txt"
-                        st.error(f"❌ {error_msg}")
+                        st.error(f"{error_msg}")
                         logger.error(f"Import error: {str(e)}", exc_info=True)
                     
                     except Exception as e:
@@ -283,26 +283,26 @@ Provide a detailed and accurate answer based on the context above. If the contex
                         
                         # Provide specific error messages based on error type
                         if "authentication" in error_str or "api key" in error_str or "401" in error_str:
-                            st.error("❌ Invalid API key. Please check your OpenAI API key.")
+                            st.error("Invalid API key. Please check your OpenAI API key.")
                             logger.error("Authentication error", exc_info=True)
                         elif "rate limit" in error_str or "429" in error_str:
-                            st.error("❌ Rate limit exceeded. Please try again in a few moments.")
+                            st.error("Rate limit exceeded. Please try again in a few moments.")
                             logger.error("Rate limit error", exc_info=True)
                         elif "quota" in error_str or "insufficient" in error_str:
-                            st.error("❌ API quota exceeded. Please check your OpenAI account billing.")
+                            st.error("API quota exceeded. Please check your OpenAI account billing.")
                             logger.error("Quota error", exc_info=True)
                         else:
-                            st.error(f"❌ An unexpected error occurred: {str(e)}")
+                            st.error(f"An unexpected error occurred: {str(e)}")
                             logger.error(f"Unexpected error: {str(e)}", exc_info=True)
                         
-                        st.info("💡 Try refreshing the page or re-uploading your PDF.")
+                        st.info("Try refreshing the page or re-uploading your PDF.")
     
     except Exception as e:
-        st.error(f"❌ Error processing PDF: {str(e)}")
+        st.error(f"Error processing PDF: {str(e)}")
         st.info("Please make sure the PDF is valid and not corrupted.")
 
 else:
-    st.info("👈 Please upload a PDF file to get started!")
+    st.info("Please upload a PDF file to get started!")
 
 # Footer
 st.markdown("---")
