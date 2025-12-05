@@ -1,9 +1,9 @@
 import streamlit as st
 from PyPDF2 import PdfReader 
-from langchain.text_splitter import RecursiveCharacterTextSplitter
+from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain_openai import OpenAIEmbeddings, ChatOpenAI
 from langchain_community.vectorstores import FAISS
-from langchain.chains.combine_documents import create_stuff_documents_chain
+from langchain_community.embeddings import HuggingFaceEmbeddings
 from langchain_core.prompts import ChatPromptTemplate
 import os
 import hashlib
@@ -37,47 +37,58 @@ def get_file_hash(file):
 with st.sidebar:
     st.title("PDF Summarizer")
     
-    # API Key Management (Hybrid Approach)
-    api_key = None
+    # API Provider Selection
+    st.subheader("🔌 API Provider")
+    api_provider = st.selectbox(
+        "Select Provider",
+        ["OpenAI", "OpenRouter", "Custom"],
+        help="Choose your LLM API provider"
+    )
     
-    # Try to get API key from secrets.toml first
-    try:
-        if "OPENAI_API_KEY" in st.secrets:
-            api_key = st.secrets["OPENAI_API_KEY"]
-            st.success("API key loaded from secrets")
-            logger.info("API key loaded from secrets.toml")
-    except FileNotFoundError:
-        pass
+    # Provider configuration
+    if api_provider == "OpenRouter":
+        base_url = "https://openrouter.ai/api/v1"
+        default_models = ["openai/gpt-3.5-turbo", "openai/gpt-4-turbo", "anthropic/claude-3-sonnet"]
+        api_key_help = "Get your API key from https://openrouter.ai/keys"
+    elif api_provider == "Custom":
+        base_url = st.text_input("Custom Base URL", value="https://api.openai.com/v1")
+        default_models = ["gpt-3.5-turbo", "gpt-4"]
+        api_key_help = "Enter your custom API key"
+    else:
+        base_url = None
+        default_models = ["gpt-3.5-turbo", "gpt-4", "gpt-4-turbo"]
+        api_key_help = "Get your API key from https://platform.openai.com/api-keys"
+
+    st.markdown("---")
     
-    # Fallback to environment variable
-    if not api_key:
-        api_key = os.getenv("OPENAI_API_KEY")
-        if api_key:
-            st.info("API key loaded from environment")
-            logger.info("API key loaded from environment variable")
-    
-    # Final fallback to UI input
-    if not api_key:
-        api_key = st.text_input(
-            "Enter your OpenAI API Key",
-            type="password",
-            help="Get your API key from https://platform.openai.com/api-keys"
-        )
-        if api_key:
-            logger.info("API key entered via UI")
+    # API Key Input (User enters key directly in UI)
+    st.subheader("🔑 API Key")
+    api_key = st.text_input(
+        f"Enter your {api_provider} API Key",
+        type="password",
+        help=api_key_help,
+        placeholder="Paste your API key here..."
+    )
     
     if api_key:
         os.environ["OPENAI_API_KEY"] = api_key
+        st.success("✅ API key configured")
+        logger.info(f"API key entered via UI for {api_provider}")
     
     st.markdown("---")
     
     # Model Configuration
     st.subheader("Model Settings")
-    model_name = st.selectbox(
-        "Select Model",
-        ["gpt-3.5-turbo", "gpt-4", "gpt-4-turbo"],
-        help="GPT-4 provides better accuracy but costs more"
-    )
+    
+    use_custom_model = st.checkbox("Use custom model name", value=False)
+    if use_custom_model:
+        model_name = st.text_input("Model Name", value=default_models[0])
+    else:
+        model_name = st.selectbox(
+            "Select Model",
+            default_models,
+            help="Choose from available models"
+        )
     
     temperature = st.slider(
         "Temperature",
@@ -193,7 +204,13 @@ if file is not None:
                 
                 # Generate embeddings and create vector store
                 try:
-                    embeddings = OpenAIEmbeddings()
+                    # Use HuggingFace embeddings for non-OpenAI providers
+                    if api_provider != "OpenAI":
+                        st.info("Using local HuggingFace embeddings (first run may take a moment to download the model)...")
+                        embeddings = HuggingFaceEmbeddings(model_name="all-MiniLM-L6-v2")
+                    else:
+                        embeddings = OpenAIEmbeddings()
+                    
                     st.session_state.vector_store = FAISS.from_texts(chunks, embeddings)
                     st.session_state.processed_file_hash = current_file_hash
                     st.session_state.processed_file_name = file.name
@@ -203,7 +220,7 @@ if file is not None:
                 except Exception as e:
                     st.error(f"Error creating embeddings: {str(e)}")
                     logger.error(f"Embedding error: {str(e)}", exc_info=True)
-                    st.info("This might be an API key issue. Please verify your OpenAI API key.")
+                    st.info("This might be an API key issue or a model download problem.")
                     st.stop()
         else:
             st.info(f"Using cached version of: {st.session_state.processed_file_name}")
@@ -236,11 +253,17 @@ if file is not None:
                         logger.info(f"Found {len(matches)} relevant chunks")
                         
                         # Initialize LLM with configured parameters
-                        llm = ChatOpenAI(
-                            temperature=temperature,
-                            max_tokens=max_tokens,
-                            model_name=model_name
-                        )
+                        llm_kwargs = {
+                            "temperature": temperature,
+                            "max_tokens": max_tokens,
+                            "model_name": model_name,
+                            "api_key": api_key
+                        }
+                        
+                        if base_url:
+                            llm_kwargs["base_url"] = base_url
+                            
+                        llm = ChatOpenAI(**llm_kwargs)
                         
                         # Create prompt template for better context
                         prompt = ChatPromptTemplate.from_template(
@@ -253,12 +276,13 @@ Question: {question}
 Provide a detailed and accurate answer based on the context above. If the context doesn't contain enough information to answer the question, say so."""
                         )
                         
-                        # Generate answer using modern LangChain API
-                        chain = create_stuff_documents_chain(llm, prompt)
-                        response = chain.invoke({
-                            "context": matches,
-                            "question": user_question
-                        })
+                        # Generate answer
+                        context_text = "\n\n".join([doc.page_content for doc in matches])
+                        messages = prompt.format_messages(
+                            context=context_text,
+                            question=user_question
+                        )
+                        response = llm.invoke(messages).content
                         
                         logger.info("Successfully generated answer")
                         
