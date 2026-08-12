@@ -1,5 +1,6 @@
-# Streamlit secrets
+# Streamlit
 .streamlit/secrets.toml
+.streamlit/secrets.toml.example
 
 # Environment variables
 .env
@@ -26,24 +27,32 @@ wheels/
 *.egg-info/
 .installed.cfg
 *.egg
+.pytest_cache/
 
 # Virtual environments
 venv/
 venv312/
 ENV/
 env/
-.venv
+.venv/
 
-# IDE
+# IDE & Agents
 .vscode/
 .idea/
 *.swp
 *.swo
 *~
+.agents/
 
-# Logs
+# Logs & User Workspace
 logs/
 *.log
+workspace/*
+!workspace/.gitkeep
+
+# Models & Temp files
+*.pt
+*.onnx
 
 # OS
 .DS_Store
