@@ -1,4 +1,4 @@
-﻿"""
+"""
 Configuration settings for AI Resume Analyzer
 """
 import os
@@ -21,7 +21,7 @@ JOB_CLASSIFIER_PATH = MODELS_DIR / "job_classifier.pkl"
 SALARY_PREDICTOR_PATH = MODELS_DIR / "salary_predictor.pkl"
 RESUME_CLASSIFIER_PATH = MODELS_DIR / "resume_classifier.pkl"
 TFIDF_VECTORIZER_PATH = MODELS_DIR / "tfidf_vectorizer.pkl"
-EMBEDDING_CACHE_FILE = MODELS_DIR / "job_embeddings_cache.pkl"
+EMBEDDING_CACHE_FILE = MODELS_DIR / "job_embeddings_cache.pt"
 EMBEDDING_HASH_FILE = MODELS_DIR / "job_embeddings_hash.txt"
 
 # Data files

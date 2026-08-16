@@ -400,7 +400,7 @@ Each persistent long-term memory record contains structured metadata:
 
 ## 12. Modular Automated Verification Suite (`tests/`)
 
-The repository includes a production-grade automated verification suite composed of **25 dedicated test files** and **127 individual, non-dummy unit and integration tests** organized by subsystem:
+The repository includes a production-grade automated verification suite composed of **28 dedicated test files** and **139 individual, non-dummy unit and integration tests** organized by subsystem:
 
 ### Test Suite Organization
 
@@ -412,7 +412,9 @@ tests/
 │   ├── test_config.py                      # Providers, Models, System Personas
 │   ├── test_session_manager.py             # Session CRUD, BaseMessage serialization, Markdown Export
 │   ├── test_thought_tracer.py              # Telemetry callbacks, Latency formatting, Output truncation
-│   └── test_orchestrator.py                # Full tool aggregation, Prompt binding, Execution init
+│   ├── test_orchestrator.py                # Full tool aggregation, Prompt binding, Execution init
+│   ├── test_schemas.py                     # Pydantic V2 schemas (Subtasks, GoalPlan, Memory, ATS, Outreach)
+│   └── test_retry_utils.py                 # Exponential backoff and jittered retry policies
 │
 ├── assistant/
 │   ├── test_goal_planner.py                # Schema, Subtask limits, Fallback plan generation
@@ -435,6 +437,7 @@ tests/
     ├── test_ats_helpers.py                 # Section detection, Experience duration, Education tier, Metrics
     ├── test_skill_extractor.py             # 13-domain taxonomy, Flat aggregation, Case insensitivity
     ├── test_career_bridge.py               # Standalone profile, Compensation estimation formula
+    ├── test_safe_tensor_serialization.py   # Safe PyTorch tensor embedding storage (eliminating pickle)
     ├── test_outreach_campaign.py           # Header normalization, Tag replacement, 4-stage cadence
     ├── test_outreach_dispatcher.py         # Email syntax validation, Simulated delivery, Excel audit log
     ├── test_outreach_bridge.py             # Outreach tools, Forced simulation security gate
@@ -446,5 +449,6 @@ To execute the complete test suite:
 ```bash
 pytest tests/ -v
 ```
-**Test Result**: `127 passed, 8 warnings in 51.79s (100% pass rate)`
+**Test Result**: `139 passed, 8 warnings in 76.84s (100% pass rate)`
+
 

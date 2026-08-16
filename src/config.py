@@ -1,7 +1,7 @@
 """
 Configuration and constants for Jarvis Super-Intelligence System.
 """
-from typing import Dict, List, Any
+from typing import Dict, List, Any, Optional
 
 # Supported Providers and Models
 PROVIDERS: Dict[str, Dict[str, Any]] = {
@@ -132,3 +132,40 @@ MAX_AUTONOMOUS_SUBTASKS = 8
 MAX_RETRY_PER_TASK = 3
 DEFAULT_ASSISTANT_NAME = "Jarvis"
 DEFAULT_USER_NAME = "Boss"
+
+# ==============================================================================
+# Pydantic Runtime Configuration Schema
+# ==============================================================================
+import os
+from pydantic import BaseModel, Field, field_validator
+
+class SystemConfig(BaseModel):
+    """Pydantic validated runtime configuration for J.A.R.V.I.S."""
+    api_provider: str = Field(default="OpenRouter", description="Active AI API Provider")
+    api_key: str = Field(default="", description="API authentication key")
+    model_name: str = Field(default="openai/gpt-4o", description="Target model identifier")
+    base_url: Optional[str] = Field(default=None, description="Custom base URL for OpenAI-compatible proxies")
+    temperature: float = Field(default=0.2, ge=0.0, le=1.0, description="Model sampling temperature")
+    timeout_seconds: int = Field(default=45, ge=5, le=300, description="Network and LLM timeout in seconds")
+    max_retries: int = Field(default=2, ge=0, le=5, description="Automatic retry attempts on transient errors")
+
+    @field_validator("api_provider")
+    @classmethod
+    def validate_provider(cls, v: str) -> str:
+        if v not in PROVIDERS:
+            raise ValueError(f"Unsupported provider '{v}'. Must be one of: {list(PROVIDERS.keys())}")
+        return v
+
+    @field_validator("temperature")
+    @classmethod
+    def clamp_temp(cls, v: float) -> float:
+        return max(0.0, min(1.0, float(v)))
+
+    @classmethod
+    def from_env(cls) -> "SystemConfig":
+        """Build validated config from environment variables."""
+        provider = os.getenv("JARVIS_PROVIDER", "OpenRouter")
+        key = os.getenv("OPENROUTER_API_KEY") or os.getenv("OPENAI_API_KEY", "")
+        model = os.getenv("JARVIS_MODEL", "openai/gpt-4o")
+        return cls(api_provider=provider, api_key=key, model_name=model)
+

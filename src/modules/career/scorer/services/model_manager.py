@@ -1,12 +1,12 @@
-﻿"""
+"""
 Model Manager - Centralized ML model loading and management
 """
 import os
 import logging
-import pickle
 import traceback
 import threading
 
+import torch
 import joblib
 import pandas as pd
 from sentence_transformers import SentenceTransformer
@@ -103,15 +103,18 @@ class ModelManager:
     def _precompute_job_embeddings(self):
         """Precompute embeddings for job descriptions with validation"""
         try:
-            # Try to load cached embeddings
+            # Try to load cached embeddings safely using PyTorch weights_only=True
             if os.path.exists(EMBEDDING_CACHE_FILE):
                 try:
-                    with open(EMBEDDING_CACHE_FILE, 'rb') as f:
-                        self.job_embeddings = pickle.load(f)
+                    self.job_embeddings = torch.load(
+                        EMBEDDING_CACHE_FILE,
+                        map_location="cpu",
+                        weights_only=True
+                    )
 
                     # Validate cache matches current dataset
                     if len(self.job_embeddings) == len(self.job_df):
-                        logger.info("Loaded cached job embeddings")
+                        logger.info("Loaded cached job embeddings via safe torch.load")
                         return
                     else:
                         logger.warning("Cache size mismatch, recomputing embeddings...")
@@ -132,10 +135,9 @@ class ModelManager:
                 batch_size=32
             )
 
-            # Cache the embeddings
-            with open(EMBEDDING_CACHE_FILE, 'wb') as f:
-                pickle.dump(self.job_embeddings, f)
-            logger.info("Job embeddings computed and cached")
+            # Cache the embeddings safely using PyTorch
+            torch.save(self.job_embeddings, EMBEDDING_CACHE_FILE)
+            logger.info("Job embeddings computed and cached via torch.save")
 
         except Exception as e:
             logger.error(f"Failed to compute embeddings: {e}")

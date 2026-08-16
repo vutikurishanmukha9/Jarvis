@@ -169,19 +169,34 @@ class GoalPlanner:
                 # Direct JSON parse
                 plan_json = json.loads(raw_text)
 
-            # Ensure tasks list is bounded and initialized
-            tasks = plan_json.get("tasks", [])[:MAX_AUTONOMOUS_SUBTASKS]
-            for idx, t in enumerate(tasks):
-                t["status"] = "pending"
-                t["result"] = ""
-                t["attempts"] = 0
-                if "id" not in t:
-                    t["id"] = f"task_{idx+1}"
-                if "depends_on" not in t:
-                    t["depends_on"] = []
+            # Ensure tasks list is bounded, schema-validated, and initialized
+            raw_tasks = plan_json.get("tasks", [])[:MAX_AUTONOMOUS_SUBTASKS]
+            validated_tasks = []
+            for idx, t in enumerate(raw_tasks):
+                # Normalize keys for robust schema compatibility
+                task_id = str(t.get("id") or f"task_{idx+1}")
+                task_title = str(t.get("title") or f"Execute Subtask {idx+1}")
+                task_instruction = str(t.get("instruction") or task_title)
+                tool_hint = str(t.get("tool_hint") or t.get("tool") or "general_assistant")
+                deliverable = str(t.get("expected_deliverable") or t.get("deliverable") or "Deliverable")
+                raw_deps = t.get("depends_on", [])
+                deps = [str(d) for d in raw_deps] if isinstance(raw_deps, list) else []
+
+                subtask_entry = {
+                    "id": task_id,
+                    "title": task_title,
+                    "instruction": task_instruction,
+                    "tool_hint": tool_hint,
+                    "expected_deliverable": deliverable,
+                    "depends_on": deps,
+                    "status": "pending",
+                    "result": "",
+                    "attempts": 0
+                }
+                validated_tasks.append(subtask_entry)
 
             # Apply topological sort for dependency-aware execution order
-            tasks = topological_sort(tasks)
+            tasks = topological_sort(validated_tasks)
             plan_json["tasks"] = tasks
             plan_json["status"] = "planned"
             return plan_json

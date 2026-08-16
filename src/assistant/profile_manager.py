@@ -120,9 +120,10 @@ class ProfileManager:
             source: Origin of the memory (conversation, user_explicit, agent_inferred).
             confidence: Reliability score 0.0-1.0 (1.0 = user-stated fact).
         """
+        import uuid
         memories = ProfileManager.load_memories()
         entry = {
-            "id": f"mem_{int(time.time()*1000)}",
+            "id": f"mem_{int(time.time()*1000)}_{uuid.uuid4().hex[:6]}",
             "fact": fact.strip(),
             "category": category,
             "source": source,
