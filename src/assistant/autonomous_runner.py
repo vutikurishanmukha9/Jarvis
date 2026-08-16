@@ -37,14 +37,15 @@ class AutonomousRunner:
         self.step_callback = step_callback
         self._artifact_store: Dict[str, str] = {}  # task_id -> output text
 
-        if self.orchestrator:
+        if self.orchestrator and hasattr(self.orchestrator, "tools"):
             # Ensure orchestrator has workspace tools
             ws_tools = get_workspace_tools()
             for t in ws_tools:
                 if t.name not in [x.name for x in self.orchestrator.tools]:
                     self.orchestrator.tools.append(t)
             # Rebuild executor with all tools
-            self.orchestrator.agent_executor = self.orchestrator._build_executor()
+            if hasattr(self.orchestrator, "_build_executor"):
+                self.orchestrator.agent_executor = self.orchestrator._build_executor()
 
     def _build_dependency_context(self, task: Dict[str, Any]) -> str:
         """
@@ -164,6 +165,8 @@ class AutonomousRunner:
                 task_result_text = f"Simulated autonomous completion of: {task_title}"
                 task["result"] = task_result_text
                 self._artifact_store[task_id] = task_result_text
+                if self.step_callback:
+                    self.step_callback(plan, task_id, f"Finished Subtask {idx+1}/{total_tasks}: COMPLETED")
                 continue
 
             # Build dependency-scoped context (not full history)

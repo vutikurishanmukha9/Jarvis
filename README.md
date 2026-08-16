@@ -105,18 +105,18 @@ Open your browser at `http://localhost:8501`.
 
 ---
 
-## Automated Test Suite
+## Modular Automated Test Suite
 
-Run the full end-to-end test suite:
+Run the full production test suite:
 ```bash
 pytest tests/ -v
 ```
 
-### Test Coverage (27/27 Tests Passing):
-- **`tests/test_core.py`**: Configuration, personas, and session manager persistence (`test_config_and_personas`, `test_session_manager_persistence`).
-- **`tests/test_assistant.py`**: Personal profile, memory CRUD lifecycle, workspace operations, autonomous runner artifact store, and topological sort with cycle detection (`test_personal_profile_and_memory`, `test_workspace_file_operations`, `test_autonomous_runner_mock_execution`, `test_memory_lifecycle_delete_and_update`, `test_autonomous_runner_artifact_store`, `test_topological_sort_linear_dependencies`, `test_topological_sort_parallel_tasks`, `test_topological_sort_cycle_detection`).
-- **`tests/test_modules.py`**: Vision registration, ATS scoring with range clamping, candidate skill & compensation estimation tools, outreach campaign manager, simulation dispatch, and safety gates (`test_vision_bridge_registration`, `test_career_ats_scoring`, `test_career_skill_and_salary_tools`, `test_ats_score_clamped_to_range`, `test_outreach_campaign_manager`, `test_outreach_bridge_and_dispatcher`, `test_outreach_dispatch_always_simulated`).
-- **`tests/test_tools.py`**: Document parsing, file hash detection, controlled Python executor with import blocklist and size limits, web tools with scheme validation and private IP SSRF blocking (`test_universal_document_parser`, `test_file_hash_change_detection`, `test_python_interpreter_tool`, `test_web_tools`, `test_python_executor_blocks_dangerous_imports`, `test_python_executor_blocks_nested_imports`, `test_python_executor_output_size_limit`, `test_web_tools_blocks_private_ips`, `test_web_tools_rejects_non_http_schemes`, `test_web_tools_allows_valid_urls`).
+### Modular Architecture (25 Dedicated Test Files):
+- **`tests/core/`**: Configuration, multi-session persistence, thought step tracer callbacks, and orchestrator tool aggregation ([test_config.py](tests/core/test_config.py), [test_session_manager.py](tests/core/test_session_manager.py), [test_thought_tracer.py](tests/core/test_thought_tracer.py), [test_orchestrator.py](tests/core/test_orchestrator.py)).
+- **`tests/assistant/`**: Goal decomposition schemas, Kahn's topological sort across complex DAGs, autonomous runner artifact store, semantic output verification, memory CRUD lifecycle, and path-confined workspace operations ([test_goal_planner.py](tests/assistant/test_goal_planner.py), [test_topological_sort.py](tests/assistant/test_topological_sort.py), [test_autonomous_runner.py](tests/assistant/test_autonomous_runner.py), [test_output_verification.py](tests/assistant/test_output_verification.py), [test_profile_manager.py](tests/assistant/test_profile_manager.py), [test_workspace_tools.py](tests/assistant/test_workspace_tools.py)).
+- **`tests/tools/`**: Controlled Python executor with dangerous import blocking, SSRF-guarded web scraper with private IP filters, multi-format document parsers (TXT, CSV, DOCX, XLSX, JSON, PY), and MD5 cache hashing ([test_python_executor.py](tests/tools/test_python_executor.py), [test_python_security.py](tests/tools/test_python_security.py), [test_web_tools.py](tests/tools/test_web_tools.py), [test_web_security_ssrf.py](tests/tools/test_web_security_ssrf.py), [test_document_parsers.py](tests/tools/test_document_parsers.py), [test_document_hash_rag.py](tests/tools/test_document_hash_rag.py)).
+- **`tests/modules/`**: 5-pillar ATS scoring formulas, section-aware field weights, 13-domain skill taxonomy, heuristic compensation estimation, recruiter spreadsheet normalization, 4-stage cadence generation, simulated email delivery with Excel audit exports, and vision quality & K-Means clustering ([test_ats_scorer.py](tests/modules/test_ats_scorer.py), [test_ats_helpers.py](tests/modules/test_ats_helpers.py), [test_skill_extractor.py](tests/modules/test_skill_extractor.py), [test_career_bridge.py](tests/modules/test_career_bridge.py), [test_outreach_campaign.py](tests/modules/test_outreach_campaign.py), [test_outreach_dispatcher.py](tests/modules/test_outreach_dispatcher.py), [test_outreach_bridge.py](tests/modules/test_outreach_bridge.py), [test_vision_bridge.py](tests/modules/test_vision_bridge.py), [test_vision_algorithms.py](tests/modules/test_vision_algorithms.py)).
 
 ---
 
