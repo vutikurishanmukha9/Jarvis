@@ -68,7 +68,7 @@ class MemoryEntryModel(BaseModel):
     category: str = Field(default="preference", description="Memory category: preference, project, personal, technical, system")
     timestamp: float = Field(default_factory=time.time, description="Unix epoch timestamp when created")
     source: str = Field(default="conversation", description="Origin: user_explicit, conversation, agent_inferred")
-    confidence: float = Field(default=1.0, ge=0.0, le=1.0, description="Confidence score from 0.0 to 1.0")
+    confidence: float = Field(default=1.0, description="Confidence score from 0.0 to 1.0")
 
     @field_validator("confidence", mode="before")
     @classmethod
@@ -103,7 +103,7 @@ class ATSInterpretationModel(BaseModel):
 
 class ATSReportModel(BaseModel):
     """Schema for comprehensive 5-pillar ATS compatibility score output."""
-    ats_score: float = Field(..., ge=0.0, le=100.0, description="Overall ATS score clamped strictly to 0-100")
+    ats_score: float = Field(default=0.0, description="Overall ATS score clamped strictly to 0-100")
     sub_scores: Dict[str, float] = Field(default_factory=dict, description="Pillar scores (0-100)")
     missing_keywords: Dict[str, List[str]] = Field(
         default_factory=lambda: {"critical": [], "important": [], "optional": []},
