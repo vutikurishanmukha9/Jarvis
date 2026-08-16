@@ -1,4 +1,4 @@
-﻿"""
+"""
 ATS Scorer Constants
 
 All dictionaries, patterns, weights, and thresholds used by the
@@ -6,14 +6,25 @@ ATS scoring engine. Separated for clarity and maintainability.
 """
 
 # ==================== SCORING WEIGHTS ====================
+#
+# Final ATS Score Formula:
+#   Score = Σ(wᵢ · Sᵢ) - w_penalty · P_formatting
+#   where each sub-score Sᵢ ∈ [0, 100] and P_formatting ∈ [0, 100]
+#   Result is clamped to [0, 100].
+#
+# Positive weights sum: 0.40 + 0.20 + 0.15 + 0.10 + 0.10 = 0.95
+# Penalty weight: 0.05 (subtracted, not added)
+# Maximum possible score: 0.95 * 100 - 0.05 * 0 = 95 (before recency bonus)
+# Minimum possible score: clamped to 0
+#
 
 SCORING_WEIGHTS = {
-    'skill_match': 0.40,
-    'title_match': 0.20,
-    'experience': 0.15,
-    'achievement': 0.10,
-    'education': 0.10,
-    'formatting_penalty': 0.05
+    'skill_match': 0.40,        # 40% — keyword and skill alignment
+    'title_match': 0.20,        # 20% — job title relevance
+    'experience': 0.15,         # 15% — years and depth of experience
+    'achievement': 0.10,        # 10% — quantified accomplishments
+    'education': 0.10,          # 10% — education level match
+    'formatting_penalty': 0.05  #  5% — deducted for formatting issues
 }
 
 # Section penalties

@@ -1,6 +1,10 @@
-﻿"""
+"""
 Career Intelligence Bridge for Jarvis Super-Intelligence.
-Integrates ATS Scoring, Skill Extraction, Salary Prediction, and Career Analytics.
+Integrates ATS Scoring, Skill Extraction, Compensation Estimation, and Career Analytics.
+
+NOTE: The compensation estimator uses a heuristic formula based on experience years,
+education level, and skill count — not a trained ML model. Results are indicative
+estimates, not predictions.
 """
 
 import json
@@ -43,7 +47,7 @@ def get_resume_skills_categorized(text: str) -> Dict[str, List[str]]:
         return {}
 
 def get_salary_and_role_estimate(resume_text: str) -> Dict[str, Any]:
-    """Predict candidate's job role, category, and salary range."""
+    """Estimate candidate's job role, category, and salary range using heuristic analysis."""
     try:
         predicted_job, matches, predicted_salary, salary_details = analyze_resume(resume_text)
         features = salary_details.get("features", {})
@@ -65,7 +69,7 @@ def get_salary_and_role_estimate(resume_text: str) -> Dict[str, Any]:
             "education_level": features.get("education_level", "Degree / Professional")
         }
     except Exception as e:
-        logger.error(f"Salary and role prediction failed: {str(e)}")
+        logger.error(f"Salary and role estimation failed: {str(e)}")
         return {
             "job_title": "Software Professional",
             "category": "Technology",
@@ -174,7 +178,9 @@ def extract_candidate_skills(text: str) -> str:
 @tool
 def predict_career_salary_and_role(resume_text: str) -> str:
     """
-    Predicts a candidate's market value, salary range, and best-fit job classification based on experience, education, and skills.
+    Estimates a candidate's market value, salary range, and best-fit job classification
+    based on experience years, education level, and skill count.
+    Uses a deterministic heuristic formula — not a trained ML model.
     Use this tool to evaluate market compensation and career trajectory.
     """
     if not resume_text or len(resume_text.strip()) < 30:
@@ -185,7 +191,7 @@ def predict_career_salary_and_role(resume_text: str) -> str:
     curr = sal.get("currency", "₹")
 
     out = [
-        "=== Career & Compensation Projection ===",
+        "=== Career & Compensation Estimate ===",
         f"• Target Job Classification: {info.get('job_title')}",
         f"• Industry Domain: {info.get('category')}",
         f"• Experience Evaluation: {info.get('experience_years')} years",
@@ -198,7 +204,8 @@ def predict_career_salary_and_role(resume_text: str) -> str:
         base = sal.get("base", 0)
         out.append(f"• Estimated Market Base: {curr}{base:,}")
         out.append(f"• Competitive Salary Band: {curr}{min_s:,} – {curr}{max_s:,}")
-        out.append(f"• Prediction Confidence: {sal.get('confidence', 'Moderate')}")
+        out.append(f"• Estimate Confidence: {sal.get('confidence', 'Moderate')}")
+        out.append(f"• Note: Based on heuristic analysis, not a trained ML model.")
     
     return "\n".join(out)
 

@@ -1,6 +1,9 @@
 """
 Email Dispatcher for Smart HR Outreach & Cold Email Engine.
-Supports secure SMTP TLS/SSL delivery and sandboxed dry-run campaign simulations with audit logging.
+Supports secure SMTP TLS/SSL delivery and simulated dry-run campaign previews with audit logging.
+
+SECURITY: Live SMTP dispatch requires explicit human approval through the UI.
+The autonomous agent is restricted to simulation mode only.
 """
 
 import time

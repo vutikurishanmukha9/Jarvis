@@ -72,17 +72,17 @@ def test_career_ats_scoring():
     assert "Overall ATS Score" in tool_res
 
 def test_career_skill_and_salary_tools():
-    """Verify Candidate Skill Extractor and Salary Prediction tools."""
+    """Verify Candidate Skill Extractor and Compensation Estimation tools."""
     profile_text = "Experienced software engineer with proficiency in Python, PyTorch, AWS, Docker, and Kubernetes. 6 years experience."
-    
+
     # 1. Skill extractor
     skills_out = extract_candidate_skills.invoke({"text": profile_text})
     assert "Identified Candidate Skills" in skills_out
     assert "python" in skills_out.lower()
 
-    # 2. Salary prediction
+    # 2. Compensation estimation (renamed from "salary prediction")
     salary_out = predict_career_salary_and_role.invoke({"resume_text": profile_text})
-    assert "Career & Compensation Projection" in salary_out
+    assert "Career & Compensation Estimate" in salary_out
 
     # 3. Tool registry
     tools = get_career_tools()
@@ -92,6 +92,27 @@ def test_career_skill_and_salary_tools():
     assert "extract_candidate_skills" in tool_names
     assert "predict_career_salary_and_role" in tool_names
 
+def test_ats_score_clamped_to_range():
+    """Verify ATS score is always clamped to [0, 100] regardless of input."""
+    resume = "Python developer."
+    jd = "Seeking a senior full-stack engineer with 10+ years in React, Node.js, Kubernetes, AWS, Terraform."
+
+    metrics = calculate_deep_ats_metrics(resume, jd)
+    score = metrics["ats_score"]
+    assert 0 <= score <= 100, f"ATS score {score} is outside [0, 100] range"
+
+    # Test with high-match resume
+    high_resume = (
+        "Senior Python Developer with 10 years experience in Python, PyTorch, Docker, "
+        "Kubernetes, PostgreSQL, AWS, React, Node.js, Terraform, FastAPI. "
+        "Master of Science in Computer Science. "
+        "Led team of 15 engineers. Reduced latency by 40%. Built ML pipeline processing 1M events/day."
+    )
+    high_jd = "Seeking Python Developer. Required: Python, PyTorch, Docker. Nice to have: AWS."
+    high_metrics = calculate_deep_ats_metrics(high_resume, high_jd)
+    high_score = high_metrics["ats_score"]
+    assert 0 <= high_score <= 100, f"High-match ATS score {high_score} is outside [0, 100] range"
+
 # 3. Outreach Tests
 def test_outreach_campaign_manager():
     """Verify CampaignManager parses CSV data, renders tags, and builds 4-stage sequences."""
@@ -100,7 +121,7 @@ def test_outreach_campaign_manager():
         "alex@company.com,Alex,Acme Corp,VP Engineering,AI Systems\n"
         "sam@startup.io,Sam,StartupLab,Recruiter,Talent"
     )
-    
+
     # 1. Parse CSV
     records = CampaignManager.parse_recipients_data(csv_data)
     assert len(records) == 2
@@ -146,15 +167,14 @@ def test_outreach_bridge_and_dispatcher():
     assert "Campaign Batch Preview" in preview
     assert "recruiter@meta.com" in preview
 
-    # 3. Simulated Dispatch
+    # 3. Simulated Dispatch — no `simulated` parameter (forced True by security gate)
     dispatch_res = dispatch_email_campaign.invoke({
         "subject_template": "Connecting with {firstName} at {company}",
         "body_template": "Hi {firstName}, hello from Jarvis.",
-        "recipients_csv_text": csv_sample,
-        "simulated": True
+        "recipients_csv_text": csv_sample
     })
     assert "Campaign Dispatch Execution Report" in dispatch_res
-    assert "DELIVERED / SIMULATED: 1" in dispatch_res.upper()
+    assert "SIMULATED: 1" in dispatch_res.upper()
 
     # 4. Tool Registry
     tools = get_outreach_tools()
@@ -164,3 +184,26 @@ def test_outreach_bridge_and_dispatcher():
     assert "generate_multi_stage_sequence" in names
     assert "preview_campaign_batch" in names
     assert "dispatch_email_campaign" in names
+
+def test_outreach_dispatch_always_simulated():
+    """Verify that dispatch_email_campaign always runs in simulated mode.
+    
+    The security gate removes the `simulated` parameter entirely from the
+    agent-callable tool. This test confirms the tool always reports simulation mode.
+    """
+    csv_sample = "email,firstName,company,role\ntest@example.com,Test,TestCorp,Engineer"
+
+    result = dispatch_email_campaign.invoke({
+        "subject_template": "Test {firstName}",
+        "body_template": "Hello {firstName}",
+        "recipients_csv_text": csv_sample
+    })
+
+    # Must always indicate simulation mode
+    assert "simulation" in result.lower(), (
+        f"Dispatch did not indicate simulation mode. Output: {result}"
+    )
+    # Must never indicate live SMTP
+    assert "live smtp" not in result.lower(), (
+        f"Dispatch incorrectly indicated live SMTP mode. Output: {result}"
+    )

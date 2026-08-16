@@ -1,6 +1,16 @@
 """
 Personal Profile and Long-Term Memory Manager for Auto-JARVIS.
 Persists user preferences, working habits, project knowledge, and custom instructions.
+
+Memory Model:
+Each memory entry contains:
+- id:         Unique identifier (mem_<timestamp_ms>)
+- fact:       The stored information
+- category:   Classification (general, preference, project, skill, etc.)
+- source:     Origin of the memory (conversation, user_explicit, agent_inferred)
+- confidence: Reliability score 0.0-1.0 (1.0 = user-stated fact, 0.5 = agent-inferred)
+- timestamp:  When the memory was created
+- updated_at: When the memory was last updated (if ever)
 """
 
 import json
@@ -27,7 +37,9 @@ DEFAULT_PROFILE: Dict[str, Any] = {
 }
 
 class ProfileManager:
-    """Manages user profile configuration and persistent memory."""
+    """Manages user profile configuration and persistent memory with full lifecycle support."""
+
+    # --- Profile Management ---
 
     @staticmethod
     def load_profile() -> Dict[str, Any]:
@@ -58,6 +70,19 @@ class ProfileManager:
             logger.error(f"Error saving profile: {str(e)}")
             return False
 
+    # --- Memory Management ---
+
+    @staticmethod
+    def _save_memories(memories: List[Dict[str, Any]]) -> bool:
+        """Internal: persist the full memory list to disk."""
+        try:
+            with open(MEMORY_FILE, "w", encoding="utf-8") as f:
+                json.dump(memories, f, indent=2, ensure_ascii=False)
+            return True
+        except Exception as e:
+            logger.error(f"Error saving memories: {str(e)}")
+            return False
+
     @staticmethod
     def load_memories() -> List[Dict[str, Any]]:
         """Load persistent long-term memories."""
@@ -65,40 +90,120 @@ class ProfileManager:
             return []
         try:
             with open(MEMORY_FILE, "r", encoding="utf-8") as f:
-                return json.load(f)
+                memories = json.load(f)
+            # Migrate old entries that lack new fields
+            for mem in memories:
+                if "source" not in mem:
+                    mem["source"] = "conversation"
+                if "confidence" not in mem:
+                    mem["confidence"] = 1.0
+                if "updated_at" not in mem:
+                    mem["updated_at"] = None
+            return memories
         except Exception as e:
             logger.error(f"Error loading memory: {str(e)}")
             return []
 
     @staticmethod
-    def add_memory(fact: str, category: str = "general") -> bool:
-        """Add a persistent memory fact about the user or projects."""
+    def add_memory(
+        fact: str,
+        category: str = "general",
+        source: str = "conversation",
+        confidence: float = 1.0
+    ) -> bool:
+        """
+        Add a persistent memory fact about the user or projects.
+        
+        Args:
+            fact: The information to remember.
+            category: Classification (general, preference, project, skill, etc.)
+            source: Origin of the memory (conversation, user_explicit, agent_inferred).
+            confidence: Reliability score 0.0-1.0 (1.0 = user-stated fact).
+        """
         memories = ProfileManager.load_memories()
         entry = {
             "id": f"mem_{int(time.time()*1000)}",
             "fact": fact.strip(),
             "category": category,
-            "timestamp": time.strftime("%Y-%m-%d %H:%M:%S")
+            "source": source,
+            "confidence": max(0.0, min(1.0, confidence)),
+            "timestamp": time.strftime("%Y-%m-%d %H:%M:%S"),
+            "updated_at": None
         }
         memories.append(entry)
-        try:
-            with open(MEMORY_FILE, "w", encoding="utf-8") as f:
-                json.dump(memories, f, indent=2, ensure_ascii=False)
-            return True
-        except Exception as e:
-            logger.error(f"Error saving memory: {str(e)}")
+        return ProfileManager._save_memories(memories)
+
+    @staticmethod
+    def delete_memory(memory_id: str) -> bool:
+        """
+        Delete a specific memory by its ID.
+        
+        Args:
+            memory_id: The unique ID of the memory to delete (e.g., "mem_1234567890").
+            
+        Returns:
+            True if the memory was found and deleted, False otherwise.
+        """
+        memories = ProfileManager.load_memories()
+        original_count = len(memories)
+        memories = [m for m in memories if m.get("id") != memory_id]
+
+        if len(memories) == original_count:
+            logger.warning(f"Memory '{memory_id}' not found for deletion.")
             return False
+
+        return ProfileManager._save_memories(memories)
+
+    @staticmethod
+    def update_memory(
+        memory_id: str,
+        new_fact: Optional[str] = None,
+        new_category: Optional[str] = None,
+        new_confidence: Optional[float] = None
+    ) -> bool:
+        """
+        Update an existing memory entry.
+        
+        Args:
+            memory_id: The unique ID of the memory to update.
+            new_fact: Updated fact text (None = keep existing).
+            new_category: Updated category (None = keep existing).
+            new_confidence: Updated confidence score (None = keep existing).
+            
+        Returns:
+            True if the memory was found and updated, False otherwise.
+        """
+        memories = ProfileManager.load_memories()
+        found = False
+
+        for mem in memories:
+            if mem.get("id") == memory_id:
+                if new_fact is not None:
+                    mem["fact"] = new_fact.strip()
+                if new_category is not None:
+                    mem["category"] = new_category
+                if new_confidence is not None:
+                    mem["confidence"] = max(0.0, min(1.0, new_confidence))
+                mem["updated_at"] = time.strftime("%Y-%m-%d %H:%M:%S")
+                found = True
+                break
+
+        if not found:
+            logger.warning(f"Memory '{memory_id}' not found for update.")
+            return False
+
+        return ProfileManager._save_memories(memories)
 
     @staticmethod
     def clear_memories() -> bool:
-        """Clear all long-term memories."""
+        """Clear all long-term memories safely across platforms."""
         try:
-            if MEMORY_FILE.exists():
-                MEMORY_FILE.unlink()
-            return True
+            return ProfileManager._save_memories([])
         except Exception as e:
             logger.error(f"Error clearing memory: {str(e)}")
             return False
+
+    # --- Context Generation ---
 
     @staticmethod
     def get_assistant_system_context() -> str:
@@ -106,9 +211,15 @@ class ProfileManager:
         profile = ProfileManager.load_profile()
         memories = ProfileManager.load_memories()
 
-        memory_bullets = ""
         if memories:
-            memory_bullets = "\n".join([f"- {m['fact']} (logged {m['timestamp']})" for m in memories[-10:]])
+            # Show most recent 10 memories, sorted by confidence (high first)
+            sorted_mems = sorted(memories, key=lambda m: m.get("confidence", 1.0), reverse=True)
+            recent = sorted_mems[-10:]
+            memory_bullets = "\n".join([
+                f"- [{m.get('category', 'general')}] {m['fact']} "
+                f"(confidence: {m.get('confidence', 1.0):.1f}, logged {m['timestamp']})"
+                for m in recent
+            ])
         else:
             memory_bullets = "No prior long-term memories logged yet."
 

@@ -113,33 +113,40 @@ def preview_campaign_batch(
 def dispatch_email_campaign(
     subject_template: str,
     body_template: str,
-    recipients_csv_text: str,
-    simulated: bool = True
+    recipients_csv_text: str
 ) -> str:
     """
-    Executes a personalized bulk cold outreach campaign.
-    If simulated=True, runs safely in sandboxed mode, formats all messages, and writes an audit spreadsheet into the workspace.
+    Executes a personalized bulk cold outreach campaign in simulation mode.
+    Formats all messages using dynamic {tag} personalization and writes an audit spreadsheet into the workspace.
+    
+    SECURITY: This tool always runs in simulation mode. Live SMTP dispatch
+    requires explicit human approval through the Streamlit UI and cannot be
+    triggered autonomously by the agent.
     """
     records = CampaignManager.parse_recipients_data(recipients_csv_text)
     if not records:
         return "Cannot execute campaign: No valid recipient records found in CSV."
 
+    # SECURITY GATE: Agent-invoked dispatch is ALWAYS simulated.
+    # Live dispatch must go through the UI with human-in-the-loop approval.
     result = EmailDispatcher.dispatch(
         subject_template=subject_template,
         body_template=body_template,
         recipients=records,
-        simulated=simulated
+        simulated=True  # Hardcoded — agent cannot override
     )
 
     out = [
         "=== Campaign Dispatch Execution Report ===",
         f"• Status: {result.get('status', 'complete').upper()}",
-        f"• Mode: {'Simulation (Sandboxed)' if simulated else 'Live SMTP'}",
+        f"• Mode: Simulation (Agent-invoked dispatch is always simulated)",
         f"• Total Processed: {result.get('total', 0)} recipients",
-        f"• Delivered / Simulated: {result.get('sent', 0)}",
+        f"• Simulated: {result.get('sent', 0)}",
         f"• Failed: {result.get('failed', 0)}",
         f"• Audit Log File: {result.get('audit_file', 'Recorded in campaigns store')}",
-        f"• Summary: {result.get('message', '')}"
+        f"• Summary: {result.get('message', '')}",
+        "",
+        "Note: To send live emails, use the Streamlit UI with explicit human approval."
     ]
     return "\n".join(out)
 
