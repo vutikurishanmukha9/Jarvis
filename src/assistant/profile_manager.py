@@ -122,3 +122,5 @@ class ProfileManager:
             f"Always operate with extreme proactivity. If a goal requires multiple steps or files, "
             f"execute them completely and save all artifacts in the workspace directory."
         )
+
+    format_context_for_prompt = get_assistant_system_context

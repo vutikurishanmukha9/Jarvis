@@ -1,0 +1,33 @@
+{
+  "industry_benchmarks": {
+    "tech_recruiting": {
+      "average_open_rate": "42.5%",
+      "average_reply_rate": "18.3%",
+      "optimal_send_time": "Tuesday & Thursday 8:30 AM - 10:00 AM recipient local time",
+      "best_performing_length": "75 - 125 words",
+      "follow_up_lift": "+48% cumulative replies across 4 stages"
+    },
+    "executive_search": {
+      "average_open_rate": "54.1%",
+      "average_reply_rate": "24.0%",
+      "optimal_send_time": "Wednesday 7:30 AM - 9:00 AM",
+      "best_performing_length": "50 - 90 words",
+      "follow_up_lift": "+35% cumulative replies"
+    },
+    "b2b_partnerships": {
+      "average_open_rate": "38.2%",
+      "average_reply_rate": "12.7%",
+      "optimal_send_time": "Tuesday & Wednesday 1:30 PM - 3:00 PM",
+      "best_performing_length": "100 - 150 words",
+      "follow_up_lift": "+62% cumulative replies across 4 stages"
+    }
+  },
+  "deliverability_rules": {
+    "max_daily_cold_emails_per_inbox": 50,
+    "recommended_throttle_delay_seconds": "45 - 90 seconds",
+    "spf_dkim_dmarc_verification": "Mandatory for 99%+ inbox placement",
+    "spam_trigger_words_to_avoid": [
+      "guaranteed", "100% free", "make money fast", "urgent attention", "act now", "risk-free"
+    ]
+  }
+}

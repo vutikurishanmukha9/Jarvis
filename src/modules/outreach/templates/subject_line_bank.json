@@ -1,0 +1,19 @@
+{
+  "curiosity_and_personal": [
+    "Quick question regarding {role} at {company}",
+    "Thoughts on {company}'s engineering roadmap - {candidateName}",
+    "Idea for {company}'s {department} team",
+    "Connecting regarding {role} - {candidateName}"
+  ],
+  "value_and_metrics": [
+    "{candidateName} - {keySkills} specialist for {company}",
+    "Scaling {company}'s infrastructure - {keyAchievement}",
+    "How we cut latency by 35% / relevance for {company}"
+  ],
+  "follow_up_cadence": [
+    "Re: Quick question regarding {role} at {company}",
+    "Following up / {company} {role} discussion",
+    "Thought you might find this relevant for {company}",
+    "Permission to close the loop - {candidateName}"
+  ]
+}

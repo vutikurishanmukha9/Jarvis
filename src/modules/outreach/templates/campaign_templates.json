@@ -1,0 +1,58 @@
+{
+  "recruiter_direct_pitch": {
+    "name": "Recruiter & Hiring Manager Direct Pitch",
+    "category": "Career",
+    "tags": ["{firstName}", "{company}", "{role}", "{department}", "{candidateName}", "{keySkills}", "{keyAchievement}", "{portfolioUrl}"],
+    "subject": "Quick question regarding {role} at {company} - {candidateName}",
+    "body": "Hi {firstName},\n\nI noticed {company} is actively scaling its {department} team and hiring for {role}.\n\nGiven my background in {keySkills} where I recently {keyAchievement}, I believe I could make an immediate impact on your upcoming technical initiatives.\n\nWould you be open to a brief 10-minute conversation this week to discuss how my skill set aligns with your team's goals?\n\nBest regards,\n{candidateName}\n{portfolioUrl}"
+  },
+  "vp_engineering_pitch": {
+    "name": "VP / Director of Engineering Value Pitch",
+    "category": "Career",
+    "tags": ["{firstName}", "{company}", "{role}", "{candidateName}", "{keySkills}", "{keyAchievement}", "{portfolioUrl}"],
+    "subject": "Ideas on {company}'s {role} infrastructure - {candidateName}",
+    "body": "Hi {firstName},\n\nI've been closely following {company}'s technical roadmap and engineering blog posts.\n\nAs a specialist in {keySkills}, I recently tackled a core challenge where I {keyAchievement}. I noticed your team might be solving similar scaling constraints as you expand.\n\nI'd welcome the chance to share a couple of specific architectural insights with you. Are you open to a brief 10-minute sync next Tuesday?\n\nBest,\n{candidateName}\n{portfolioUrl}"
+  },
+  "hr_candidate_sourcing": {
+    "name": "HR Recruiter to Candidate Sourcing",
+    "category": "HR",
+    "tags": ["{firstName}", "{company}", "{role}", "{keySkills}", "{senderName}"],
+    "subject": "{firstName}, exciting {role} opportunity at {company}",
+    "body": "Hi {firstName},\n\nI came across your profile and was impressed by your extensive track record in {keySkills}.\n\nWe are currently looking for a high-performing {role} to lead critical platform initiatives at {company}. Given your background, I believe this role would be a natural accelerator for your career.\n\nAre you open to learning more about our engineering roadmap and compensation benchmarks?\n\nBest regards,\n{senderName}\n{company}"
+  },
+  "executive_networking": {
+    "name": "Executive Peer Networking",
+    "category": "Networking",
+    "tags": ["{firstName}", "{company}", "{role}", "{industry}", "{senderName}"],
+    "subject": "Connecting with {role} leaders in {industry}",
+    "body": "Hi {firstName},\n\nI've been following your leadership at {company} and your work shaping {industry} standards.\n\nI am connecting with fellow leaders to exchange insights on modern system architectures, talent retention, and AI adoption trends.\n\nWould you be open to a 15-minute virtual coffee over Zoom in the coming weeks?\n\nWarmly,\n{senderName}"
+  },
+  "b2b_partnership_pitch": {
+    "name": "Business Development & Partnership",
+    "category": "Growth",
+    "tags": ["{firstName}", "{company}", "{myCompany}", "{valueProposition}", "{metricResult}", "{senderName}"],
+    "subject": "Potential collaboration between {company} and {myCompany}",
+    "body": "Hi {firstName},\n\nI've been following {company}'s impressive expansion.\n\nAt {myCompany}, we help engineering teams {valueProposition}. We recently helped a similar platform achieve {metricResult}.\n\nDo you have 10 minutes next Wednesday for a brief introductory chat?\n\nBest regards,\n{senderName}"
+  },
+  "investor_pitch": {
+    "name": "Investor & Venture Pitch",
+    "category": "Fundraising",
+    "tags": ["{firstName}", "{company}", "{startupName}", "{oneLiner}", "{metricHighlight}", "{founderName}", "{pitchDeckUrl}"],
+    "subject": "{startupName} ({metricHighlight}) - introduction to {firstName}",
+    "body": "Hi {firstName},\n\nI'm reaching out because of your notable investments in the deep tech space.\n\nI'm the founder of {startupName} — we {oneLiner}.\n\nOver the last 6 months, we've achieved {metricHighlight} and are now raising our round to accelerate product development.\n\nI've attached our one-pager and deck here: {pitchDeckUrl}.\n\nWould you be interested in a 15-minute introductory call next week?\n\nBest,\n{founderName}"
+  },
+  "follow_up_gentle_nudge": {
+    "name": "Gentle Follow-Up Nudge (Day 4 - 7)",
+    "category": "Follow-Up",
+    "tags": ["{firstName}", "{company}", "{role}", "{senderName}"],
+    "subject": "Re: Quick question regarding {role} at {company}",
+    "body": "Hi {firstName},\n\nI know how busy your schedule must be managing priorities at {company}.\n\nJust wanted to briefly bump this to the top of your inbox in case it slipped through. Would you have 5 minutes to connect this week regarding the {role} role?\n\nBest,\n{senderName}"
+  },
+  "graceful_breakup": {
+    "name": "Graceful Breakup Email (Day 14)",
+    "category": "Follow-Up",
+    "tags": ["{firstName}", "{company}", "{role}", "{senderName}", "{portfolioUrl}"],
+    "subject": "Permission to close the loop — {senderName}",
+    "body": "Hi {firstName},\n\nI assume timing might not be right currently for the {role} position at {company}, so I won't follow up further on this thread.\n\nIf priorities align in the future, please feel free to reach out anytime. Wishing you and {company} continued success!\n\nWarmly,\n{senderName}\n{portfolioUrl}"
+  }
+}

@@ -1,0 +1,35 @@
+{
+  "sequence_name": "Technical Recruiter & Engineering Manager 4-Stage Cadence",
+  "target_persona": "Engineering Managers, Tech Leads & Technical Recruiters",
+  "total_days": 14,
+  "steps": [
+    {
+      "step": 1,
+      "name": "Initial Direct Pitch",
+      "delay_days": 0,
+      "subject": "Quick question regarding {role} at {company} - {candidateName}",
+      "objective": "Establish skill relevance, highlight quantifiable achievements, request brief conversation."
+    },
+    {
+      "step": 2,
+      "name": "Value-Add & Case Study",
+      "delay_days": 4,
+      "subject": "Thought on {company}'s engineering stack - {candidateName}",
+      "objective": "Share technical insights or code repository link to prove expertise."
+    },
+    {
+      "step": 3,
+      "name": "Soft Nudge",
+      "delay_days": 8,
+      "subject": "Re: {role} at {company}",
+      "objective": "Gentle top-of-inbox reminder acknowledging busy schedule."
+    },
+    {
+      "step": 4,
+      "name": "Graceful Breakup",
+      "delay_days": 14,
+      "subject": "Permission to close the loop - {candidateName}",
+      "objective": "Leave a lasting positive impression while giving them a final frictionless reply prompt."
+    }
+  ]
+}

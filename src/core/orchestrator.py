@@ -19,9 +19,11 @@ except ImportError:
 from ..config import PERSONAS, PROVIDERS
 from ..tools.web_tools import get_web_tools
 from ..tools.python_executor import python_interpreter, get_and_clear_figure_buffer
-from ..vision.vision_bridge import get_vision_tools, get_and_clear_annotated_images
+from ..modules.vision import get_vision_tools, get_and_clear_annotated_images
 from ..assistant.workspace_tools import get_workspace_tools
 from ..assistant.profile_manager import ProfileManager
+from ..modules.career import get_career_tools
+from ..modules.outreach import get_outreach_tools
 
 logger = logging.getLogger(__name__)
 
@@ -110,7 +112,13 @@ class JarvisOrchestrator:
         # 4. Workspace & Artifact Generation Tools
         tools.extend(get_workspace_tools())
         
-        # 5. Universal Document RAG Tool (if documents uploaded)
+        # 5. Career & ATS Optimization Tools
+        tools.extend(get_career_tools())
+        
+        # 6. HR Outreach & Campaign Tools
+        tools.extend(get_outreach_tools())
+        
+        # 7. Universal Document RAG Tool (if documents uploaded)
         if self.document_tool:
             tools.append(self.document_tool)
             

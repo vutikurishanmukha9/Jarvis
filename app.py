@@ -42,15 +42,21 @@ from src.tools.document_tools import (
     get_files_hash, process_documents_and_build_vector_store,
     create_document_retriever_tool
 )
-from src.vision.vision_bridge import (
+from src.modules.vision import (
     register_uploaded_image, clear_active_images
 )
-from src.memory.session_manager import SessionManager
-from src.agents.orchestrator import JarvisOrchestrator
+from src.core.session_manager import SessionManager
+from src.core.orchestrator import JarvisOrchestrator
 from src.assistant.profile_manager import ProfileManager
-from src.assistant.workspace_tools import get_workspace_tools
+from src.assistant.workspace_tools import get_workspace_tools, generate_word_document
 from src.assistant.goal_planner import GoalPlanner
 from src.assistant.autonomous_runner import AutonomousRunner
+from src.modules.career import (
+    calculate_deep_ats_metrics,
+    get_salary_and_role_estimate,
+    get_resume_skills_categorized
+)
+from src.modules.outreach import CampaignManager, EmailDispatcher
 
 # 1. Page Configuration
 st.set_page_config(
@@ -271,9 +277,11 @@ except Exception as e:
     st.stop()
 
 # 11. Navigation Tabs
-tab_chat, tab_mission, tab_workspace, tab_profile = st.tabs([
+tab_chat, tab_mission, tab_career, tab_outreach, tab_workspace, tab_profile = st.tabs([
     "Intelligence Chat",
     "Autonomous Mission Control",
+    "Career & ATS Studio",
+    "HR Outreach & Campaigns",
     "Workspace Files",
     "Personal Profile & Memory"
 ])
@@ -407,7 +415,7 @@ with tab_mission:
     st.caption(f"Assign high-level goals for JARVIS to plan, execute, and deliver autonomously on your behalf.")
 
     # Mission Preset Selectors
-    col_mp1, col_mp2, col_mp3 = st.columns(3)
+    col_mp1, col_mp2, col_mp3, col_mp4, col_mp5 = st.columns(5)
     preset_goal = ""
     with col_mp1:
         if st.button("Market & Competitor Dossier", use_container_width=True):
@@ -418,6 +426,12 @@ with tab_mission:
     with col_mp3:
         if st.button("Executive Briefing & Docx", use_container_width=True):
             preset_goal = "Synthesize all uploaded documents and recent web developments into a 3-section Executive Briefing Word document and save it in the workspace."
+    with col_mp4:
+        if st.button("Resume ATS Optimization", use_container_width=True):
+            preset_goal = "Audit the candidate resume against modern tech industry benchmarks, extract key skills, identify missing critical keywords, generate a tailored Word document resume (.docx) in the workspace, and provide an executive improvement brief."
+    with col_mp5:
+        if st.button("Recruiter Outreach Campaign", use_container_width=True):
+            preset_goal = "Draft a personalized recruiter outreach email with a 4-stage follow-up cadence for the target company and role, render previews with dynamic tags, and save the campaign briefing in the workspace."
 
     # Mission Input Box
     goal_input = st.text_area(
@@ -511,7 +525,338 @@ with tab_mission:
         st.markdown(latest.get("summary", ""))
 
 # ==============================================================================
-# TAB 3: WORKSPACE FILES EXPLORER
+# TAB 3: CAREER & ATS STUDIO
+# ==============================================================================
+with tab_career:
+    st.markdown("### **Career & ATS Resume Studio**")
+    st.caption("AI-powered resume optimization, ATS compatibility scoring, skill extraction, and market salary projection.")
+
+    col_c1, col_c2 = st.columns(2)
+    with col_c1:
+        st.markdown("#### **Candidate Resume**")
+        input_resume_text = st.text_area(
+            "Paste Resume Content (Text/Markdown):",
+            height=240,
+            placeholder="Senior Full Stack Engineer with 6+ years experience in Python, PyTorch, Docker, FastAPI, PostgreSQL, AWS. Developed high-throughput microservices. Master of Science in Computer Science."
+        )
+    with col_c2:
+        st.markdown("#### **Target Job Description (JD)**")
+        input_jd_text = st.text_area(
+            "Paste Target Job Description:",
+            height=240,
+            placeholder="Looking for a Senior Python Developer with 5+ years experience. Required: Python, PyTorch, Docker, Kubernetes, PostgreSQL. Nice to have: AWS, CI/CD, Microservices. MS or BS in Computer Science."
+        )
+
+    col_act1, col_act2 = st.columns([2, 2])
+    with col_act1:
+        run_ats_btn = st.button("Run Full ATS Compatibility & Career Audit", type="primary", use_container_width=True)
+    with col_act2:
+        generate_opt_btn = st.button("Generate Tailored ATS Resume in Workspace (.docx)", use_container_width=True)
+
+    if run_ats_btn:
+        if not input_resume_text.strip():
+            st.warning("Please paste resume content to analyze.")
+        else:
+            with st.spinner("Analyzing resume against ATS engine & ML models..."):
+                role_info = get_salary_and_role_estimate(input_resume_text)
+                ats_results = calculate_deep_ats_metrics(input_resume_text, input_jd_text.strip() if input_jd_text.strip() else input_resume_text)
+                detected_skills = get_resume_skills_categorized(input_resume_text)
+                
+                st.session_state.last_ats_results = ats_results
+                st.session_state.last_role_info = role_info
+                st.session_state.last_detected_skills = detected_skills
+
+    if "last_ats_results" in st.session_state:
+        ats = st.session_state.last_ats_results
+        role = st.session_state.last_role_info
+        skills = st.session_state.last_detected_skills
+
+        st.markdown("---")
+        
+        # Overall Score Metric
+        score = ats.get("ats_score", 0)
+        interp = ats.get("interpretation", {})
+        sub = ats.get("sub_scores", {})
+        badge_color = interp.get("color", "blue")
+        if badge_color == "red":
+            badge_tone = "red"
+        elif badge_color in ["green", "teal"]:
+            badge_tone = "green"
+        else:
+            badge_tone = "amber"
+
+        col_m1, col_m2, col_m3, col_m4, col_m5, col_m6 = st.columns(6)
+        with col_m1:
+            st.metric("Overall ATS Score", f"{score}/100")
+        with col_m2:
+            st.metric("Skill Match", f"{sub.get('skill_match', 0)}%")
+        with col_m3:
+            st.metric("Title Match", f"{sub.get('title_match', 0)}%")
+        with col_m4:
+            st.metric("Experience", f"{sub.get('experience', 0)}%")
+        with col_m5:
+            st.metric("Achievements", f"{sub.get('achievement', 0)}%")
+        with col_m6:
+            st.metric("Formatting", f"{100 - sub.get('formatting_penalty', 0)}%")
+
+        st.markdown(
+            f"<div class='apple-card'>"
+            f"<strong>ATS Assessment: <span class='apple-badge {badge_tone}'>{interp.get('badge', 'Status').upper()}</span></strong><br>"
+            f"<span style='color:#A1A1A6; font-size:0.9rem;'>{interp.get('message', '')}</span>"
+            f"</div>",
+            unsafe_allow_html=True
+        )
+
+        # Market Compensation & Role Prediction
+        sal = role.get("salary_estimate", {})
+        if sal and "range" in sal:
+            curr = sal.get("currency", "₹")
+            st.markdown(
+                f"<div class='apple-card'>"
+                f"<strong>Market Valuation & Role Prediction:</strong><br>"
+                f"• Target Job Classification: <strong>{role.get('job_title')}</strong> ({role.get('category')} Domain)<br>"
+                f"• Estimated Market Base: <strong>{curr}{sal.get('base', 0):,}</strong> (Range: {curr}{sal['range'].get('min', 0):,} – {curr}{sal['range'].get('max', 0):,}) &bull; Confidence: <strong>{sal.get('confidence', 'Moderate')}</strong>"
+                f"</div>",
+                unsafe_allow_html=True
+            )
+
+        # Skills & Missing Keywords
+        col_sk1, col_sk2 = st.columns(2)
+        with col_sk1:
+            st.markdown("#### **Detected Candidate Skills by Domain**")
+            if skills:
+                for cat, items in skills.items():
+                    c_name = cat.replace("_", " ").title()
+                    pills = " ".join([f"<span class='apple-pill'>{s}</span>" for s in items])
+                    st.markdown(f"**{c_name}**: {pills}", unsafe_allow_html=True)
+            else:
+                st.caption("No standard technical skills detected.")
+
+        with col_sk2:
+            st.markdown("#### **Missing Job Keywords & Skill Gaps**")
+            missing = ats.get("missing_keywords", {})
+            crit = missing.get("critical", [])
+            imp = missing.get("important", [])
+            
+            if crit:
+                st.markdown("**Critical Keywords (Must Include):**")
+                crit_pills = " ".join([f"<span class='apple-badge red'>{k}</span>" for k in crit])
+                st.markdown(crit_pills, unsafe_allow_html=True)
+            if imp:
+                st.markdown("**Important Keywords (Recommended):**")
+                imp_pills = " ".join([f"<span class='apple-badge amber'>{k}</span>" for k in imp])
+                st.markdown(imp_pills, unsafe_allow_html=True)
+            if not crit and not imp:
+                st.success("No missing critical or important keywords detected!")
+
+        # Actionable Suggestions
+        suggs = ats.get("suggestions", [])
+        if suggs:
+            st.markdown("#### **Priority Optimization Actions**")
+            for idx, s in enumerate(suggs):
+                st.markdown(f"- **Action {idx+1}**: {s}")
+
+    if generate_opt_btn and input_resume_text.strip():
+        with st.spinner("Generating tailored ATS-optimized resume document in workspace..."):
+            opt_title = "Tailored Professional Resume"
+            doc_content = f"# Professional Resume\n\n## Summary\nExperienced professional with technical expertise aligned to target job description.\n\n## Core Competencies\n"
+            detected_skills = get_resume_skills_categorized(input_resume_text)
+            for cat, items in detected_skills.items():
+                doc_content += f"- **{cat.replace('_', ' ').title()}**: {', '.join(items)}\n"
+            doc_content += f"\n## Professional Experience & Achievements\n{input_resume_text}\n"
+            
+            res_path = generate_word_document.invoke({
+                "filename": "optimized_resume.docx",
+                "title": opt_title,
+                "markdown_content": doc_content
+            })
+            st.success(f"Generated: `{res_path}`. You can inspect or download it from the **Workspace Files** tab!")
+
+# ==============================================================================
+# TAB 4: HR OUTREACH & CAMPAIGNS
+# ==============================================================================
+with tab_outreach:
+    st.markdown("### **Smart HR Outreach & Cold Email Campaigns**")
+    st.caption("AI-powered personalized outreach, spreadsheet recipient parsing, dynamic tag substitution, and multi-stage follow-up sequences.")
+
+    outreach_mode = st.radio("Outreach Workflow Mode", ["Campaign Dispatcher & Live Preview", "Multi-Stage Follow-Up Sequence Generator"], horizontal=True)
+
+    if outreach_mode == "Campaign Dispatcher & Live Preview":
+        col_o1, col_o2 = st.columns(2)
+        with col_o1:
+            st.markdown("#### **Recipient Ingestion (CSV / Excel)**")
+            st.caption("Format: `email, firstName, company, role` (additional columns become dynamic `{tags}`)")
+            
+            col_ld1, col_ld2 = st.columns(2)
+            with col_ld1:
+                if st.button("Load Tech Recruiters List", use_container_width=True):
+                    st.session_state.current_recipients_csv = CampaignManager.get_sample_recipients_csv()
+            with col_ld2:
+                if st.button("Load Investor List", use_container_width=True):
+                    inv_path = Path("src/modules/outreach/data/sample_recipients_vc_investors.csv")
+                    if inv_path.exists():
+                        with open(inv_path, "r", encoding="utf-8") as inf:
+                            st.session_state.current_recipients_csv = inf.read()
+
+            default_csv = st.session_state.get("current_recipients_csv", CampaignManager.get_sample_recipients_csv())
+            recipients_input = st.text_area("Recipients CSV:", value=default_csv, height=155)
+            parsed_records = CampaignManager.parse_recipients_data(recipients_input)
+            st.caption(f"Valid recipients detected: **{len(parsed_records)}**")
+
+        with col_o2:
+            st.markdown("#### **Campaign Template Composer**")
+            template_lib = CampaignManager.get_template_library()
+            template_names = [v.get("name") for v in template_lib.values()] if template_lib else [
+                "Recruiter & Hiring Manager Direct Pitch", "HR Recruiter to Candidate Sourcing", "Business Development & Partnership"
+            ]
+            template_choice = st.selectbox("Load Template Preset:", template_names + ["Custom Template"])
+            
+            selected_tmpl = None
+            for v in template_lib.values():
+                if v.get("name") == template_choice:
+                    selected_tmpl = v
+                    break
+
+            if selected_tmpl:
+                default_subj = selected_tmpl.get("subject", "")
+                default_body = selected_tmpl.get("body", "")
+            elif template_choice == "Custom Template":
+                default_subj = "Connecting regarding {role} at {company}"
+                default_body = "Hi {firstName},\n\nReaching out regarding {role} at {company}.\n\nBest,\n{senderName}"
+            else:
+                default_subj = "Quick question regarding {role} at {company} - {candidateName}"
+                default_body = "Hi {firstName},\n\nI noticed {company} is actively scaling for {role}."
+
+            subj_input = st.text_input("Email Subject Template:", value=default_subj)
+            body_input = st.text_area("Email Body Template:", value=default_body, height=180)
+
+        # Dynamic Tag Chips
+        detected_tags = CampaignManager.extract_template_tags(subj_input + " " + body_input)
+        if detected_tags:
+            st.markdown(
+                "**Detected Dynamic Personalization Tags:** " +
+                " ".join([f"<span class='apple-pill'>{'{' + t + '}'}</span>" for t in detected_tags]),
+                unsafe_allow_html=True
+            )
+
+        # Live Per-Recipient Previewer
+        if parsed_records:
+            st.markdown("---")
+            st.markdown("#### **Live Recipient Previewer**")
+            preview_idx = st.slider("Select Recipient to Preview Rendered Output:", 1, len(parsed_records), 1) - 1
+            curr_rec = parsed_records[preview_idx]
+            
+            rend_subj = CampaignManager.render_template(subj_input, curr_rec, {"candidateName": user_name, "portfolioUrl": "https://linkedin.com"})
+            rend_body = CampaignManager.render_template(body_input, curr_rec, {"candidateName": user_name, "portfolioUrl": "https://linkedin.com"})
+
+            col_pv1, col_pv2 = st.columns([1, 2])
+            with col_pv1:
+                st.markdown(
+                    f"<div class='apple-card'>"
+                    f"<strong>Recipient Metadata:</strong><br>"
+                    f"• Email: <code>{curr_rec.get('email')}</code><br>"
+                    f"• Name: <strong>{curr_rec.get('firstName', '')}</strong><br>"
+                    f"• Company: <strong>{curr_rec.get('company', '')}</strong><br>"
+                    f"• Role: <strong>{curr_rec.get('role', '')}</strong>"
+                    f"</div>",
+                    unsafe_allow_html=True
+                )
+            with col_pv2:
+                st.markdown(
+                    f"<div class='apple-card'>"
+                    f"<strong>Subject:</strong> {rend_subj}<br><br>"
+                    f"<div style='white-space: pre-wrap; font-family: -apple-system, BlinkMacSystemFont, sans-serif; font-size: 0.9rem;'>{rend_body}</div>"
+                    f"</div>",
+                    unsafe_allow_html=True
+                )
+
+        # Campaign Dispatch Controls
+        st.markdown("---")
+        col_dc1, col_dc2 = st.columns([2, 1])
+        with col_dc1:
+            is_simulated = st.checkbox("Safe Simulation Mode (Dry-run with preview validation & Excel audit logs, no live emails sent)", value=True)
+        with col_dc2:
+            dispatch_btn = st.button("Execute Outreach Campaign", type="primary", use_container_width=True)
+
+        if dispatch_btn:
+            if not parsed_records:
+                st.warning("Please provide valid recipient records.")
+            else:
+                with st.spinner("Executing outreach campaign batch..."):
+                    res = EmailDispatcher.dispatch(
+                        subject_template=subj_input,
+                        body_template=body_input,
+                        recipients=parsed_records,
+                        global_tags={"candidateName": user_name, "portfolioUrl": "https://linkedin.com"},
+                        simulated=is_simulated
+                    )
+                    st.session_state.last_outreach_result = res
+
+        if "last_outreach_result" in st.session_state:
+            ores = st.session_state.last_outreach_result
+            st.markdown(
+                f"<div class='apple-card'>"
+                f"<strong>Campaign Status: <span class='apple-badge green'>COMPLETED ({ores.get('sent')}/{ores.get('total')} Sent)</span></strong><br>"
+                f"<span style='color:#A1A1A6; font-size:0.9rem;'>{ores.get('message')}</span>"
+                f"</div>",
+                unsafe_allow_html=True
+            )
+            if ores.get("delivery_logs"):
+                st.dataframe(pd.DataFrame(ores.get("delivery_logs")))
+
+    else:
+        # Mode 2: Multi-Stage Follow-Up Sequence Generator
+        st.markdown("#### **Multi-Stage Follow-Up Sequence Generator**")
+        st.caption("Generate a 4-stage cadence (Initial Pitch, Day 4 Value Add, Day 8 Soft Nudge, Day 14 Graceful Breakup).")
+
+        col_sq1, col_sq2 = st.columns(2)
+        with col_sq1:
+            t_role = st.text_input("Target Role / Position:", value="Senior Staff Software Engineer")
+            t_comp = st.text_input("Target Company:", value="Stripe")
+            c_name = st.text_input("Candidate Name:", value=user_name)
+        with col_sq2:
+            k_skills = st.text_input("Key Technical Skills / Stack:", value="Python, PyTorch, Distributed Systems, Kubernetes")
+            k_achieve = st.text_input("Key Quantified Achievement:", value="increased core system throughput by 45% and cut latency by 30ms")
+            p_url = st.text_input("Portfolio / GitHub URL:", value="https://github.com/vutikurishanmukha9")
+
+        gen_seq_btn = st.button("Generate 4-Stage Cadence", type="primary", use_container_width=False)
+
+        if gen_seq_btn or "last_sequence" in st.session_state:
+            if gen_seq_btn:
+                seq_data = CampaignManager.build_multi_stage_sequence(
+                    target_role=t_role,
+                    target_company=t_comp,
+                    candidate_name=c_name,
+                    key_skills=k_skills,
+                    key_achievement=k_achieve,
+                    portfolio_url=p_url
+                )
+                st.session_state.last_sequence = seq_data
+
+            if "last_sequence" in st.session_state:
+                seq = st.session_state.last_sequence
+                for step in seq:
+                    with st.container():
+                        st.markdown(
+                            f"<div class='apple-card'>"
+                            f"<strong>{step['stage']}</strong><br>"
+                            f"<strong>Subject:</strong> <code>{step['subject']}</code><br><br>"
+                            f"<div style='white-space: pre-wrap; font-size:0.9rem;'>{step['body']}</div>"
+                            f"</div>",
+                            unsafe_allow_html=True
+                        )
+
+                if st.button("Save Sequence to Workspace (.md)"):
+                    md_text = f"# 4-Stage Outreach Sequence: {t_role} at {t_comp}\n\n"
+                    for step in seq:
+                        md_text += f"## {step['stage']}\n**Subject**: `{step['subject']}`\n\n```text\n{step['body']}\n```\n\n---\n\n"
+                    seq_file = WORKSPACE_DIR / "outreach_cadence.md"
+                    with open(seq_file, "w", encoding="utf-8") as sf:
+                        sf.write(md_text)
+                    st.success(f"Saved to `{seq_file}`! Inspect in **Workspace Files** tab.")
+
+# ==============================================================================
+# TAB 5: WORKSPACE FILES EXPLORER
 # ==============================================================================
 with tab_workspace:
     st.markdown("### **Workspace Files & Deliverables**")

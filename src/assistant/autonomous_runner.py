@@ -9,7 +9,7 @@ from typing import Dict, Any, List, Optional, Callable
 from langchain_core.messages import HumanMessage
 
 from ..config import MAX_RETRY_PER_TASK, WORKSPACE_DIR
-from ..agents.orchestrator import JarvisOrchestrator
+from ..core.orchestrator import JarvisOrchestrator
 from .workspace_tools import get_workspace_tools
 from .profile_manager import ProfileManager
 
@@ -20,19 +20,20 @@ class AutonomousRunner:
 
     def __init__(
         self,
-        orchestrator: JarvisOrchestrator,
+        orchestrator: Optional[JarvisOrchestrator] = None,
         step_callback: Optional[Callable[[Dict[str, Any], str, str], None]] = None
     ):
         self.orchestrator = orchestrator
         self.step_callback = step_callback
         
-        # Ensure orchestrator has workspace tools
-        ws_tools = get_workspace_tools()
-        for t in ws_tools:
-            if t.name not in [x.name for x in self.orchestrator.tools]:
-                self.orchestrator.tools.append(t)
-        # Rebuild executor with all tools
-        self.orchestrator.agent_executor = self.orchestrator._build_executor()
+        if self.orchestrator:
+            # Ensure orchestrator has workspace tools
+            ws_tools = get_workspace_tools()
+            for t in ws_tools:
+                if t.name not in [x.name for x in self.orchestrator.tools]:
+                    self.orchestrator.tools.append(t)
+            # Rebuild executor with all tools
+            self.orchestrator.agent_executor = self.orchestrator._build_executor()
 
     def execute_plan(self, plan: Dict[str, Any], initial_goal: str) -> Dict[str, Any]:
         """
@@ -48,13 +49,22 @@ class AutonomousRunner:
         plan["status"] = "running"
 
         for idx, task in enumerate(tasks):
-            task_id = task["id"]
-            task_title = task["title"]
+            task_id = task.get("id", f"task_{idx+1}")
+            task_title = task.get("title", task.get("description", f"Subtask {idx+1}"))
+            task_instruction = task.get("instruction", task.get("description", ""))
             task["status"] = "in_progress"
             task["attempts"] = 1
 
             if self.step_callback:
                 self.step_callback(plan, task_id, f"Executing Subtask {idx+1}/{total_tasks}: {task_title}")
+
+            # If no orchestrator is attached, perform simulated execution
+            if not self.orchestrator:
+                task["status"] = "completed"
+                task_result_text = f"Simulated autonomous completion of: {task_title}"
+                task["result"] = task_result_text
+                completed_results.append(f"Subtask '{task_title}' Deliverable:\n{task_result_text}")
+                continue
 
             # Build enriched contextual prompt for this subtask
             context_history = ""
@@ -64,7 +74,7 @@ class AutonomousRunner:
             subtask_prompt = (
                 f"[AUTONOMOUS MISSION: '{initial_goal}']\n"
                 f"CURRENT SUBTASK ({idx+1}/{total_tasks}): {task_title}\n"
-                f"SPECIFIC INSTRUCTION: {task['instruction']}\n"
+                f"SPECIFIC INSTRUCTION: {task_instruction}\n"
                 f"EXPECTED DELIVERABLE: {task.get('expected_deliverable', 'Actionable result')}\n"
                 f"{context_history}\n\n"
                 f"Execute the appropriate tools autonomously. If creating files, save them into the workspace. "

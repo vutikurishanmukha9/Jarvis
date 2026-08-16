@@ -57,3 +57,5 @@ workspace/*
 # OS
 .DS_Store
 Thumbs.db
+
+HI_HR/
