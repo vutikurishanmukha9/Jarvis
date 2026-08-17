@@ -7,6 +7,7 @@ The autonomous agent is restricted to simulation mode only.
 """
 
 import time
+import uuid
 import smtplib
 import logging
 from email.mime.text import MIMEText
@@ -79,7 +80,8 @@ class EmailDispatcher:
                     "failed": len(recipients)
                 }
 
-        campaign_id = f"camp_{int(time.time())}"
+        # UUIDs avoid audit-file and history collisions during concurrent dispatches.
+        campaign_id = f"camp_{uuid.uuid4().hex}"
         start_time = time.strftime("%Y-%m-%d %H:%M:%S")
 
         for idx, rec in enumerate(recipients):

@@ -1,17 +1,14 @@
 import asyncio
 import uuid
 import logging
+import os
+import json
 from datetime import datetime
 from concurrent.futures import ThreadPoolExecutor
 from typing import Dict, Optional, Any
 from .schemas import JobStatus, JobResponse
-import sys
-import os
 
-# Add parent directory to path to import backend modules
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-
-from multimodal_system import MultimodalAI
+from ..multimodal_system import MultimodalAI
 
 logger = logging.getLogger(__name__)
 
@@ -52,6 +49,7 @@ class JobManager:
 
     def create_job(self) -> str:
         """Create a new job and return its ID."""
+        self._prune_jobs()
         job_id = str(uuid.uuid4())
         self.jobs[job_id] = {
             "id": job_id,
@@ -62,6 +60,17 @@ class JobManager:
             "result": None
         }
         return job_id
+
+    def _prune_jobs(self, max_jobs: int = 1_000) -> None:
+        """Bound in-memory job history, retaining pending work and recent completions."""
+        if len(self.jobs) < max_jobs:
+            return
+        completed = sorted(
+            (job for job in self.jobs.values() if job["completed_at"] is not None),
+            key=lambda job: job["completed_at"],
+        )
+        for job in completed[: max(0, len(self.jobs) - max_jobs + 1)]:
+            self.jobs.pop(job["id"], None)
 
     def get_job(self, job_id: str) -> Optional[JobResponse]:
         """Get the status of a job."""
@@ -127,112 +136,49 @@ class JobManager:
                 await asyncio.sleep(1) # Prevent tight loop on error
 
     async def _process_batch(self, batch: list):
-        """Process a list of job items."""
-        job_ids = [item['job_id'] for item in batch]
-        image_paths = [item['image_path'] for item in batch]
-        questions = [item['question'] for item in batch]
-        # Use config from first item for the whole batch for now
-        # Ideally, we should group by config, but for simplicity assuming uniform config
-        config = batch[0]['config'] 
+        """Process queued jobs, grouping only requests with equivalent configuration."""
+        groups: Dict[str, list] = {}
+        for item in batch:
+            key = json.dumps(item["config"], sort_keys=True, default=str)
+            groups.setdefault(key, []).append(item)
 
-        logger.info(f"Processing batch of {len(batch)} jobs: {job_ids}")
-        
-        # Mark all as processing
-        for jid in job_ids:
-            self.jobs[jid]['status'] = JobStatus.PROCESSING
+        for group in groups.values():
+            job_ids = [item["job_id"] for item in group]
+            image_paths = [item["image_path"] for item in group]
+            questions = [item["question"] for item in group]
+            config = group[0]["config"]
+            logger.info("Processing %d job(s): %s", len(group), job_ids)
+            for job_id in job_ids:
+                self.jobs[job_id]["status"] = JobStatus.PROCESSING
 
-        try:
-            # Run blocking inference in executor
-            loop = asyncio.get_running_loop()
-            results = await loop.run_in_executor(
-                self.executor,
-                self.system.process_batch,
-                image_paths,
-                questions,
-                config
-            )
-            
-            # Map results back to jobs
-            for i, jid in enumerate(job_ids):
-                if results[i].get('error'):
-                    self.jobs[jid]['status'] = JobStatus.FAILED
-                    self.jobs[jid]['error'] = results[i]['error']
-                else:
-                    self.jobs[jid]['status'] = JobStatus.COMPLETED
-                    self.jobs[jid]['result'] = results[i]
-                self.jobs[jid]['completed_at'] = datetime.now()
-                
-        except Exception as e:
-            logger.error(f"Batch processing failed: {e}")
-            for jid in job_ids:
-                self.jobs[jid]['status'] = JobStatus.FAILED
-                self.jobs[jid]['error'] = str(e)
-                self.jobs[jid]['completed_at'] = datetime.now() 
-
-    def create_job(self) -> str:
-        """Create a new job and return its ID."""
-        job_id = str(uuid.uuid4())
-        self.jobs[job_id] = {
-            "id": job_id,
-            "status": JobStatus.PENDING,
-            "created_at": datetime.now(),
-            "completed_at": None,
-            "error": None,
-            "result": None
-        }
-        return job_id
-
-    def get_job(self, job_id: str) -> Optional[JobResponse]:
-        """Get the status of a job."""
-        job = self.jobs.get(job_id)
-        if not job:
-            return None
-        return JobResponse(
-            job_id=job["id"],
-            status=job["status"],
-            created_at=job["created_at"],
-            completed_at=job["completed_at"],
-            error=job["error"],
-            result=job["result"]
-        )
-
-    async def submit_job(self, image_path: str, question: str, config: Optional[Dict[str, Any]] = None) -> str:
-        """Submit a job for processing."""
-        job_id = self.create_job()
-        
-        # Run the processing in a separate thread
-        asyncio.create_task(self._process_job(job_id, image_path, question, config))
-        
-        return job_id
-
-    async def _process_job(self, job_id: str, image_path: str, question: str, config: Optional[Dict[str, Any]] = None):
-        """Internal method to process the job in background."""
-        logger.info(f"Starting job {job_id} for image {image_path}")
-        
-        self.jobs[job_id]["status"] = JobStatus.PROCESSING
-        
-        try:
-            # Run the synchronous process method in the thread pool
-            loop = asyncio.get_running_loop()
-            result = await loop.run_in_executor(
-                self.executor,
-                self.system.process,
-                image_path,
-                question,
-                config
-            )
-            
-            if result.get('error'):
-                self.jobs[job_id]["status"] = JobStatus.FAILED
-                self.jobs[job_id]["error"] = result['error']
-            else:
-                self.jobs[job_id]["status"] = JobStatus.COMPLETED
-                self.jobs[job_id]["result"] = result
-                
-        except Exception as e:
-            logger.error(f"Job {job_id} failed: {str(e)}")
-            self.jobs[job_id]["status"] = JobStatus.FAILED
-            self.jobs[job_id]["error"] = str(e)
-            
-        finally:
-            self.jobs[job_id]["completed_at"] = datetime.now()
+            try:
+                loop = asyncio.get_running_loop()
+                results = await loop.run_in_executor(
+                    self.executor, self.system.process_batch, image_paths, questions, config
+                )
+                if len(results) != len(group):
+                    raise RuntimeError("Vision backend returned an unexpected result count.")
+                for item, result in zip(group, results):
+                    job = self.jobs[item["job_id"]]
+                    if result.get("error"):
+                        job["status"] = JobStatus.FAILED
+                        job["error"] = result["error"]
+                    else:
+                        job["status"] = JobStatus.COMPLETED
+                        job["result"] = result
+                    job["completed_at"] = datetime.now()
+            except Exception as exc:
+                logger.exception("Vision batch processing failed")
+                for job_id in job_ids:
+                    job = self.jobs[job_id]
+                    job["status"] = JobStatus.FAILED
+                    job["error"] = str(exc)
+                    job["completed_at"] = datetime.now()
+            finally:
+                for image_path in image_paths:
+                    try:
+                        os.remove(image_path)
+                    except FileNotFoundError:
+                        pass
+                    except OSError:
+                        logger.warning("Could not remove temporary upload: %s", image_path)

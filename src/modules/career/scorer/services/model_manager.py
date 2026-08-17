@@ -2,6 +2,7 @@
 Model Manager - Centralized ML model loading and management
 """
 import os
+import hashlib
 import logging
 import traceback
 import threading
@@ -22,6 +23,26 @@ from src.modules.career.scorer.config import (
 )
 
 logger = logging.getLogger(__name__)
+
+# Immutable release-artifact checksums.  Update these only as part of the
+# reviewed model-release process; never load an artifact that fails validation.
+MODEL_ARTIFACT_SHA256 = {
+    "job_classifier.pkl": "B46E1CF27827CB801A7A4D0E9ED873B0B23B5D51FD8964A27620E9F237EA71BF",
+    "salary_predictor.pkl": "28F054806C0BD3746EEA21156A05423E743B17B664C6603F6585C4CEA2A50393",
+}
+
+
+def _verify_model_artifact(path: str) -> None:
+    """Require exact release checksums before deserializing legacy model files."""
+    expected = MODEL_ARTIFACT_SHA256.get(os.path.basename(path))
+    if expected is None:
+        raise ValueError(f"No approved checksum is configured for model artifact: {path}")
+    digest = hashlib.sha256()
+    with open(path, "rb") as artifact:
+        for chunk in iter(lambda: artifact.read(1024 * 1024), b""):
+            digest.update(chunk)
+    if digest.hexdigest().upper() != expected:
+        raise ValueError(f"Model artifact checksum validation failed: {path}")
 
 
 class ModelManager:
@@ -62,12 +83,14 @@ class ModelManager:
             # Load classifier
             if not os.path.exists(JOB_CLASSIFIER_PATH):
                 raise FileNotFoundError(f"job_classifier.pkl not found at {JOB_CLASSIFIER_PATH}")
+            _verify_model_artifact(JOB_CLASSIFIER_PATH)
             self.resume_classifier = joblib.load(JOB_CLASSIFIER_PATH)
             logger.info("Resume classifier loaded")
 
             # Load salary predictor
             if not os.path.exists(SALARY_PREDICTOR_PATH):
                 raise FileNotFoundError(f"salary_predictor.pkl not found at {SALARY_PREDICTOR_PATH}")
+            _verify_model_artifact(SALARY_PREDICTOR_PATH)
             self.salary_model = joblib.load(SALARY_PREDICTOR_PATH)
             logger.info("Salary predictor loaded")
 

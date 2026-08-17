@@ -23,13 +23,11 @@ def test_resolve_workspace_path_confinement():
     p1 = _resolve_workspace_path("test.txt")
     assert p1.is_relative_to(WORKSPACE_DIR.resolve()) or str(p1).startswith(str(WORKSPACE_DIR.resolve()))
 
-    # 2. Path traversal attack ../../secret.txt
-    p2 = _resolve_workspace_path("../../secret.txt")
-    assert str(p2).startswith(str(WORKSPACE_DIR.resolve()))
-
-    # 3. Absolute path attack /etc/passwd
-    p3 = _resolve_workspace_path("/etc/passwd")
-    assert str(p3).startswith(str(WORKSPACE_DIR.resolve()))
+    # 2. Traversal and absolute paths must be rejected rather than silently rewritten.
+    with pytest.raises(ValueError):
+        _resolve_workspace_path("../workspace_evil/secret.txt")
+    with pytest.raises(ValueError):
+        _resolve_workspace_path("/etc/passwd")
 
 def test_write_and_read_workspace_file():
     """Verify creating and reading text and script files in workspace."""

@@ -17,14 +17,20 @@ from .profile_manager import ProfileManager
 logger = logging.getLogger(__name__)
 
 def _resolve_workspace_path(path_str: str) -> Path:
-    """Resolve a relative or workspace path ensuring it stays inside WORKSPACE_DIR."""
-    clean_path = path_str.strip().lstrip("/\\")
-    target = (WORKSPACE_DIR / clean_path).resolve()
+    """Resolve a relative path, rejecting every attempt to leave ``WORKSPACE_DIR``."""
+    if not isinstance(path_str, str) or not path_str.strip():
+        raise ValueError("A non-empty workspace-relative path is required.")
+
+    candidate = Path(path_str.strip())
+    if candidate.is_absolute():
+        raise ValueError("Absolute paths are not allowed in the workspace.")
+
     workspace_resolved = WORKSPACE_DIR.resolve()
-    
-    # Ensure sandboxed inside workspace
-    if not str(target).startswith(str(workspace_resolved)):
-        return workspace_resolved / Path(clean_path).name
+    target = (workspace_resolved / candidate).resolve()
+    try:
+        target.relative_to(workspace_resolved)
+    except ValueError as exc:
+        raise ValueError("Path must remain inside the workspace.") from exc
     return target
 
 @tool

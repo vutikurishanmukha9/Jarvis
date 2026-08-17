@@ -10,6 +10,7 @@ import csv
 import json
 import time
 import logging
+import threading
 from pathlib import Path
 from typing import List, Dict, Any, Optional
 import pandas as pd
@@ -23,6 +24,7 @@ CAMPAIGNS_LOG_FILE = OUTREACH_DIR / "campaigns.json"
 ENGINE_TEMPLATES_FILE = MODULE_DIR / "templates" / "campaign_templates.json"
 ENGINE_SAMPLE_CSV = MODULE_DIR / "data" / "sample_recipients_tech_recruiters.csv"
 ENGINE_ANALYTICS_FILE = MODULE_DIR / "data" / "outreach_analytics.json"
+_campaign_log_lock = threading.Lock()
 
 class CampaignManager:
     """Manages cold email outreach campaigns, recipient parsing, and multi-stage sequences."""
@@ -262,14 +264,18 @@ class CampaignManager:
     def save_campaign_record(campaign_data: Dict[str, Any]) -> None:
         """Save campaign delivery record to persistent JSON store."""
         try:
-            records = []
-            if CAMPAIGNS_LOG_FILE.exists():
-                with open(CAMPAIGNS_LOG_FILE, "r", encoding="utf-8") as f:
-                    records = json.load(f)
-            
-            records.append(campaign_data)
-            with open(CAMPAIGNS_LOG_FILE, "w", encoding="utf-8") as f:
-                json.dump(records, f, indent=2)
+            with _campaign_log_lock:
+                records = []
+                if CAMPAIGNS_LOG_FILE.exists():
+                    with open(CAMPAIGNS_LOG_FILE, "r", encoding="utf-8") as f:
+                        records = json.load(f)
+                if not isinstance(records, list):
+                    raise ValueError("Campaign history must be a JSON list.")
+                records.append(campaign_data)
+                temporary_path = CAMPAIGNS_LOG_FILE.with_suffix(".tmp")
+                with open(temporary_path, "w", encoding="utf-8") as f:
+                    json.dump(records, f, indent=2, ensure_ascii=False)
+                temporary_path.replace(CAMPAIGNS_LOG_FILE)
         except Exception as e:
             logger.error(f"Failed to save campaign record: {e}")
 

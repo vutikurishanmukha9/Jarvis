@@ -1,20 +1,16 @@
 import logging
 import os
-import shutil
+import uuid
+from pathlib import Path
 from typing import Optional
-from fastapi import FastAPI, UploadFile, File, Form, HTTPException, Depends, BackgroundTasks
+from fastapi import FastAPI, UploadFile, File, Form, HTTPException, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
 import json
 
 from .schemas import AnalysisRequest, JobResponse, AnalysisConfig
 from .manager import JobManager
-import sys
-
-# Add parent directory to path
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-
-from multimodal_system import MultimodalAI
+from ..multimodal_system import MultimodalAI
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -22,6 +18,7 @@ logger = logging.getLogger(__name__)
 
 # Global state
 job_manager: Optional[JobManager] = None
+MAX_UPLOAD_BYTES = 20 * 1024 * 1024
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -44,9 +41,12 @@ async def lifespan(app: FastAPI):
 app = FastAPI(title="Multimodal AI API", lifespan=lifespan)
 
 # CORS configuration
+allowed_origins = [origin.strip() for origin in os.getenv(
+    "JARVIS_CORS_ORIGINS", "http://localhost:8501,http://127.0.0.1:8501"
+).split(",") if origin.strip()]
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=allowed_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -68,14 +68,21 @@ async def analyze_image(
     Upload an image and start analysis.
     Returns a job ID to poll for results.
     """
-    # Create temp file for the image
+    file_location: Optional[Path] = None
+    submitted = False
     try:
-        temp_dir = os.path.join(os.getcwd(), "temp_uploads")
-        os.makedirs(temp_dir, exist_ok=True)
-        file_location = os.path.join(temp_dir, file.filename)
-        
-        with open(file_location, "wb+") as file_object:
-            shutil.copyfileobj(file.file, file_object)
+        temp_dir = Path.cwd() / "temp_uploads"
+        temp_dir.mkdir(mode=0o700, exist_ok=True)
+        suffix = Path(file.filename or "").suffix.lower()
+        file_location = temp_dir / f"{uuid.uuid4().hex}{suffix}"
+
+        total_bytes = 0
+        with file_location.open("wb") as file_object:
+            while chunk := await file.read(64 * 1024):
+                total_bytes += len(chunk)
+                if total_bytes > MAX_UPLOAD_BYTES:
+                    raise HTTPException(status_code=413, detail="Uploaded image exceeds the 20MB limit.")
+                file_object.write(chunk)
             
         # Parse config
         analysis_config = None
@@ -86,14 +93,23 @@ async def analyze_image(
                 raise HTTPException(status_code=400, detail="Invalid JSON in config")
 
         # Submit job
-        job_id = await manager.submit_job(file_location, question, analysis_config)
+        job_id = await manager.submit_job(str(file_location), question, analysis_config)
+        submitted = True
         
         # Get initial status
         return manager.get_job(job_id)
         
+    except HTTPException:
+        raise
     except Exception as e:
         logger.error(f"Error processing upload: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
+    finally:
+        if file_location is not None and not submitted:
+            try:
+                file_location.unlink(missing_ok=True)
+            except OSError:
+                logger.warning("Could not remove failed upload: %s", file_location)
 
 @app.get("/jobs/{job_id}", response_model=JobResponse)
 async def get_job_status(

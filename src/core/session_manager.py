@@ -5,6 +5,8 @@ Session Management and Conversational Memory Persistence for Jarvis.
 import json
 import logging
 import time
+import re
+import uuid
 from pathlib import Path
 from typing import Dict, List, Any, Optional, Tuple
 from langchain_core.messages import HumanMessage, AIMessage, BaseMessage
@@ -13,6 +15,13 @@ logger = logging.getLogger(__name__)
 
 SESSIONS_DIR = Path("logs/sessions")
 SESSIONS_DIR.mkdir(parents=True, exist_ok=True)
+
+
+def _session_file(session_id: str) -> Path:
+    """Return a safe session file path; session IDs are never treated as paths."""
+    if not isinstance(session_id, str) or not re.fullmatch(r"[A-Za-z0-9_-]{1,128}", session_id):
+        raise ValueError("Invalid session ID.")
+    return SESSIONS_DIR / f"{session_id}.json"
 
 class SessionManager:
     """Manages chat sessions, history persistence, and exports."""
@@ -30,7 +39,7 @@ class SessionManager:
     @staticmethod
     def generate_session_id() -> str:
         """Create a new timestamp-based session ID."""
-        return f"session_{time.strftime('%Y%m%d_%H%M%S')}"
+        return f"session_{time.strftime('%Y%m%d_%H%M%S')}_{uuid.uuid4().hex[:8]}"
 
     @staticmethod
     def save_session(session_id: str, messages: List[BaseMessage], persona: str = "JARVIS Supreme"):
@@ -51,7 +60,7 @@ class SessionManager:
                 "messages": serializable_msgs
             }
             
-            file_path = SESSIONS_DIR / f"{session_id}.json"
+            file_path = _session_file(session_id)
             with open(file_path, "w", encoding="utf-8") as f:
                 json.dump(data, f, indent=2, ensure_ascii=False)
         except Exception as e:
@@ -60,7 +69,10 @@ class SessionManager:
     @staticmethod
     def load_session(session_id: str) -> Tuple[List[BaseMessage], str]:
         """Load session messages and persona from disk."""
-        file_path = SESSIONS_DIR / f"{session_id}.json"
+        try:
+            file_path = _session_file(session_id)
+        except ValueError:
+            return [], "JARVIS Supreme"
         if not file_path.exists():
             return [], "JARVIS Supreme"
         

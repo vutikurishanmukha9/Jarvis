@@ -78,6 +78,37 @@ def _validate_url(url: str) -> str:
     return ""  # Safe
 
 
+def _fetch_with_safe_redirects(url: str, headers: dict) -> requests.Response:
+    """Fetch a URL while validating every redirect destination against SSRF."""
+    current_url = url
+    for redirect_count in range(MAX_REDIRECTS + 1):
+        validation_error = _validate_url(current_url)
+        if validation_error:
+            raise ValueError(validation_error)
+
+        response = requests.get(
+            current_url,
+            headers=headers,
+            timeout=12,
+            allow_redirects=False,
+            stream=True,
+        )
+        if not response.is_redirect:
+            return response
+
+        if redirect_count == MAX_REDIRECTS:
+            response.close()
+            raise ValueError(f"Too many redirects. Maximum allowed: {MAX_REDIRECTS}.")
+        location = response.headers.get("Location")
+        if not location:
+            response.close()
+            raise ValueError("Redirect response did not contain a Location header.")
+        current_url = requests.compat.urljoin(current_url, location)
+        response.close()
+
+    raise ValueError("Redirect handling failed unexpectedly.")
+
+
 @tool
 def wikipedia_lookup(query: str) -> str:
     """
@@ -119,30 +150,11 @@ def read_webpage_content(url: str) -> str:
     Args:
         url: Complete HTTP or HTTPS web address.
     """
-    # Security validation
-    validation_error = _validate_url(url)
-    if validation_error:
-        return f"[Security] {validation_error}"
-
     try:
         headers = {
             "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
         }
-        resp = requests.get(
-            url,
-            headers=headers,
-            timeout=12,
-            allow_redirects=True,
-            stream=True
-        )
-
-        # Check redirect count
-        if resp.history and len(resp.history) > MAX_REDIRECTS:
-            return (
-                f"[Security] Too many redirects ({len(resp.history)}). "
-                f"Maximum allowed: {MAX_REDIRECTS}."
-            )
-
+        resp = _fetch_with_safe_redirects(url, headers)
         resp.raise_for_status()
 
         # Check content size before reading full body
@@ -153,8 +165,17 @@ def read_webpage_content(url: str) -> str:
                 f"Maximum allowed: {MAX_RESPONSE_BYTES // 1024}KB."
             )
 
-        # Read with size limit
-        content = resp.content[:MAX_RESPONSE_BYTES]
+        # Read incrementally; accessing ``resp.content`` would download an unbounded body.
+        chunks = []
+        total_bytes = 0
+        for chunk in resp.iter_content(chunk_size=16_384):
+            if not chunk:
+                continue
+            total_bytes += len(chunk)
+            if total_bytes > MAX_RESPONSE_BYTES:
+                return f"[Security] Response exceeded {MAX_RESPONSE_BYTES // 1024}KB."
+            chunks.append(chunk)
+        content = b"".join(chunks)
         text = content.decode("utf-8", errors="ignore")
 
         soup = BeautifulSoup(text, "html.parser")

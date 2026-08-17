@@ -39,7 +39,9 @@ def register_uploaded_image(file: Any) -> Dict[str, Any]:
     filename = file.name
     try:
         content = file.getvalue()
-        pil_img = Image.open(io.BytesIO(content)).convert("RGB")
+        source_image = Image.open(io.BytesIO(content))
+        image_format = source_image.format or Path(filename).suffix.lstrip(".").upper()
+        pil_img = source_image.convert("RGB")
         img_np = np.array(pil_img)
         # Convert RGB to BGR for OpenCV
         import cv2
@@ -50,7 +52,7 @@ def register_uploaded_image(file: Any) -> Dict[str, Any]:
             "bgr": img_bgr,
             "rgb": img_np,
             "size": pil_img.size,
-            "format": pil_img.format or Path(filename).suffix.lstrip(".").upper()
+            "format": image_format
         }
         logger.info(f"Registered active image: {filename} ({pil_img.size})")
         return {"status": "success", "filename": filename, "dimensions": pil_img.size}

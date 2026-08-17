@@ -51,6 +51,13 @@ def test_email_dispatcher_simulated_audit_file_creation():
     assert res["audit_file"] is not None
     assert Path(res["audit_file"]).exists()
 
+
+def test_email_dispatcher_campaign_ids_are_unique():
+    recipients = [{"email": "lead@tech.io", "firstName": "Ada", "company": "Tech"}]
+    first = EmailDispatcher.dispatch("Hello", "Hi", recipients, simulated=True, delay_seconds=0)
+    second = EmailDispatcher.dispatch("Hello", "Hi", recipients, simulated=True, delay_seconds=0)
+    assert first["campaign_id"] != second["campaign_id"]
+
 def test_email_dispatcher_live_smtp_failure_without_credentials():
     """Verify live SMTP mode fails gracefully when host is unreachable."""
     recipients = [{"email": "target@example.com", "firstName": "Test", "company": "TestOrg"}]

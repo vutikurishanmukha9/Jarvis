@@ -60,3 +60,10 @@ def test_session_manager_nonexistent_handling():
     msgs, persona = SessionManager.load_session("non_existent_session_9999")
     assert msgs == []
     assert persona == "JARVIS Supreme"
+
+
+def test_session_manager_rejects_path_traversal():
+    """Session IDs must never be accepted as filesystem paths."""
+    messages, persona = SessionManager.load_session("../../outside")
+    assert messages == []
+    assert persona == "JARVIS Supreme"

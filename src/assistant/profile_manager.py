@@ -16,6 +16,7 @@ Each memory entry contains:
 import json
 import logging
 import time
+import threading
 from pathlib import Path
 from typing import Dict, Any, List, Optional
 
@@ -25,6 +26,7 @@ logger = logging.getLogger(__name__)
 
 PROFILE_FILE = ASSISTANT_DIR / "profile.json"
 MEMORY_FILE = ASSISTANT_DIR / "long_term_memory.json"
+_profile_lock = threading.RLock()
 
 DEFAULT_PROFILE: Dict[str, Any] = {
     "user_name": DEFAULT_USER_NAME,
@@ -63,8 +65,11 @@ class ProfileManager:
     def save_profile(profile_data: Dict[str, Any]) -> bool:
         """Save user profile to disk."""
         try:
-            with open(PROFILE_FILE, "w", encoding="utf-8") as f:
-                json.dump(profile_data, f, indent=2, ensure_ascii=False)
+            with _profile_lock:
+                temporary_path = PROFILE_FILE.with_suffix(".tmp")
+                with open(temporary_path, "w", encoding="utf-8") as f:
+                    json.dump(profile_data, f, indent=2, ensure_ascii=False)
+                temporary_path.replace(PROFILE_FILE)
             return True
         except Exception as e:
             logger.error(f"Error saving profile: {str(e)}")
@@ -76,8 +81,11 @@ class ProfileManager:
     def _save_memories(memories: List[Dict[str, Any]]) -> bool:
         """Internal: persist the full memory list to disk."""
         try:
-            with open(MEMORY_FILE, "w", encoding="utf-8") as f:
-                json.dump(memories, f, indent=2, ensure_ascii=False)
+            with _profile_lock:
+                temporary_path = MEMORY_FILE.with_suffix(".tmp")
+                with open(temporary_path, "w", encoding="utf-8") as f:
+                    json.dump(memories, f, indent=2, ensure_ascii=False)
+                temporary_path.replace(MEMORY_FILE)
             return True
         except Exception as e:
             logger.error(f"Error saving memories: {str(e)}")
@@ -219,7 +227,7 @@ class ProfileManager:
         if memories:
             # Show most recent 10 memories, sorted by confidence (high first)
             sorted_mems = sorted(memories, key=lambda m: m.get("confidence", 1.0), reverse=True)
-            recent = sorted_mems[-10:]
+            recent = sorted_mems[:10]
             memory_bullets = "\n".join([
                 f"- [{m.get('category', 'general')}] {m['fact']} "
                 f"(confidence: {m.get('confidence', 1.0):.1f}, logged {m['timestamp']})"
