@@ -89,8 +89,12 @@ class ProfileManager:
         if not MEMORY_FILE.exists():
             return []
         try:
-            with open(MEMORY_FILE, "r", encoding="utf-8") as f:
-                memories = json.load(f)
+            content = MEMORY_FILE.read_text(encoding="utf-8").strip()
+            if not content:
+                return []
+            memories = json.loads(content)
+            if not isinstance(memories, list):
+                return []
             # Migrate old entries that lack new fields
             for mem in memories:
                 if "source" not in mem:

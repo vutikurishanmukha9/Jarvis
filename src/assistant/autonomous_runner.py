@@ -133,11 +133,16 @@ class AutonomousRunner:
             # to avoid blocking execution on verification infrastructure issues
             return {"passed": True, "reason": f"Verification skipped due to error: {str(e)}"}
 
-    def execute_plan(self, plan: Dict[str, Any], initial_goal: str) -> Dict[str, Any]:
+    def execute_plan(
+        self,
+        plan: Dict[str, Any],
+        initial_goal: str,
+        max_mission_duration_seconds: float = 300.0,
+        max_cumulative_retries: int = 6
+    ) -> Dict[str, Any]:
         """
-        Execute all subtasks in dependency-aware topological order.
-        Each task receives only artifacts from its declared dependencies.
-        Each output is verified against the expected deliverable before proceeding.
+        Execute all subtasks in dependency-aware topological order with enterprise governance.
+        Enforces global mission timeouts, subtask retry budgets, and graceful degraded synthesis.
         """
         tasks: List[Dict[str, Any]] = plan.get("tasks", [])
         all_steps: List[Dict[str, Any]] = []
@@ -148,7 +153,19 @@ class AutonomousRunner:
         plan["status"] = "running"
         self._artifact_store.clear()
 
+        mission_start_time = time.time()
+        cumulative_retries = 0
+        timed_out = False
+
         for idx, task in enumerate(tasks):
+            # Check global mission timeout ceiling
+            elapsed_time = time.time() - mission_start_time
+            if elapsed_time > max_mission_duration_seconds or cumulative_retries >= max_cumulative_retries:
+                timed_out = True
+                task["status"] = "skipped_due_to_timeout"
+                task["result"] = f"Mission exceeded budget (elapsed: {elapsed_time:.1f}s, retries: {cumulative_retries})."
+                continue
+
             task_id = task.get("id", f"task_{idx+1}")
             task_title = task.get("title", task.get("description", f"Subtask {idx+1}"))
             task_instruction = task.get("instruction", task.get("description", ""))
@@ -215,6 +232,7 @@ class AutonomousRunner:
                         self._artifact_store[task_id] = task_result_text
                         break
                     else:
+                        cumulative_retries += 1
                         logger.warning(
                             f"Subtask {task_id} attempt {attempt} failed verification: "
                             f"{verification['reason']}"
@@ -235,6 +253,7 @@ class AutonomousRunner:
                             self._artifact_store[task_id] = task_result_text
 
                 except Exception as e:
+                    cumulative_retries += 1
                     logger.warning(f"Subtask {task_id} attempt {attempt} failed: {str(e)}")
                     task["attempts"] = attempt
                     verification = {"passed": False, "reason": str(e)}
@@ -250,7 +269,7 @@ class AutonomousRunner:
                 self.step_callback(plan, task_id, f"Finished Subtask {idx+1}/{total_tasks}: {task['status'].upper()}")
 
         # Final synthesis
-        plan["status"] = "completed"
+        plan["status"] = "partially_completed" if timed_out else "completed"
         final_summary = self._generate_mission_summary(initial_goal, plan)
 
         return {

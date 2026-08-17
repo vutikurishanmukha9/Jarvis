@@ -97,3 +97,53 @@ class SessionManager:
             lines.append(msg.content)
             lines.append("")
         return "\n".join(lines)
+
+    @staticmethod
+    def prune_context_window(
+        messages: List[BaseMessage],
+        max_messages: int = 20,
+        max_chars: int = 16000
+    ) -> List[BaseMessage]:
+        """
+        Prune conversational history using a sliding window to fit within LLM token/context budgets.
+        
+        Rules:
+        - If messages count <= max_messages and total length <= max_chars, returns unmodified list.
+        - Keeps the first message if it establishes primary user intent / system role.
+        - Retains the most recent (max_messages - 1) messages.
+        - Truncates oversized message bodies to prevent single-turn token exhaustion.
+        """
+        if not messages:
+            return []
+
+        # 1. Message Count Pruning: Keep first message (if exists) + last (max_messages - 1)
+        if len(messages) > max_messages:
+            if max_messages <= 1:
+                pruned = messages[-1:]
+            else:
+                pruned = [messages[0]] + list(messages[-(max_messages - 1):])
+        else:
+            pruned = list(messages)
+
+        # 2. Character Budget Guard: Calculate total length and truncate from older turns if needed
+        total_chars = sum(len(str(getattr(m, "content", ""))) for m in pruned)
+        
+        if total_chars > max_chars:
+            while len(pruned) > 2 and total_chars > max_chars:
+                removed = pruned.pop(1)
+                total_chars -= len(str(getattr(removed, "content", "")))
+
+        # 3. Individual Message Body Cap (max 4000 chars per individual historical turn)
+        bounded: List[BaseMessage] = []
+        for msg in pruned:
+            content = str(getattr(msg, "content", ""))
+            if len(content) > 4000:
+                truncated_content = content[:3900] + "\n... [Context truncated for token efficiency]"
+                if isinstance(msg, HumanMessage):
+                    bounded.append(HumanMessage(content=truncated_content))
+                else:
+                    bounded.append(AIMessage(content=truncated_content))
+            else:
+                bounded.append(msg)
+
+        return bounded

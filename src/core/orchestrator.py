@@ -24,6 +24,7 @@ from ..assistant.workspace_tools import get_workspace_tools
 from ..assistant.profile_manager import ProfileManager
 from ..modules.career import get_career_tools
 from ..modules.outreach import get_outreach_tools
+from .session_manager import SessionManager
 
 logger = logging.getLogger(__name__)
 
@@ -159,11 +160,13 @@ class JarvisOrchestrator:
     def run(self, user_input: str, chat_history: List[BaseMessage]) -> Dict[str, Any]:
         """
         Execute the agent pipeline on user input, returning output, steps, charts, and annotated images.
+        Automatically applies sliding-window context compression to avoid token exhaustion.
         """
         tracer = ThoughtStepTracer()
+        bounded_history = SessionManager.prune_context_window(chat_history)
         try:
             response = self.agent_executor.invoke(
-                {"input": user_input, "chat_history": chat_history},
+                {"input": user_input, "chat_history": bounded_history},
                 config={"callbacks": [tracer]}
             )
             output_text = response.get("output", "I processed your request, but generated an empty response.")

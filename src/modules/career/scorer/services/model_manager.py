@@ -5,9 +5,12 @@ import os
 import logging
 import traceback
 import threading
+from typing import Optional, List, Tuple, Any, Dict
 
 import torch
 import joblib
+import faiss
+import numpy as np
 import pandas as pd
 from sentence_transformers import SentenceTransformer
 
@@ -22,7 +25,7 @@ logger = logging.getLogger(__name__)
 
 
 class ModelManager:
-    """Centralized model management with caching and error handling"""
+    """Centralized model management with FAISS ANN indexing and safe tensor serialization"""
     _instance = None
     _lock = threading.Lock()
 
@@ -43,6 +46,7 @@ class ModelManager:
         self.job_df = None
         self.embed_model = None
         self.job_embeddings = None
+        self.faiss_index: Optional[faiss.IndexFlatIP] = None
         self._models_loaded = False
         self._initialized = True
 
@@ -115,6 +119,7 @@ class ModelManager:
                     # Validate cache matches current dataset
                     if len(self.job_embeddings) == len(self.job_df):
                         logger.info("Loaded cached job embeddings via safe torch.load")
+                        self._build_faiss_index()
                         return
                     else:
                         logger.warning("Cache size mismatch, recomputing embeddings...")
@@ -139,9 +144,67 @@ class ModelManager:
             torch.save(self.job_embeddings, EMBEDDING_CACHE_FILE)
             logger.info("Job embeddings computed and cached via torch.save")
 
+            # Build in-memory FAISS ANN index
+            self._build_faiss_index()
+
         except Exception as e:
             logger.error(f"Failed to compute embeddings: {e}")
             raise
+
+    def _build_faiss_index(self):
+        """Build and populate a FAISS IndexFlatIP index with L2-normalized vectors."""
+        try:
+            if self.job_embeddings is None:
+                return
+
+            if isinstance(self.job_embeddings, torch.Tensor):
+                embeddings_np = self.job_embeddings.detach().cpu().numpy().astype("float32")
+            else:
+                embeddings_np = np.array(self.job_embeddings, dtype="float32")
+
+            # L2 normalize for cosine similarity via inner product
+            faiss.normalize_L2(embeddings_np)
+            dimension = embeddings_np.shape[1]
+
+            index = faiss.IndexFlatIP(dimension)
+            index.add(embeddings_np)
+            self.faiss_index = index
+            logger.info(f"FAISS IndexFlatIP initialized with {index.ntotal} vectors (dim={dimension})")
+        except Exception as e:
+            logger.error(f"Failed to build FAISS index: {e}")
+
+    def search_jobs(self, query_embedding: Any, top_k: int = 3) -> List[Tuple[str, float, int]]:
+        """
+        Query the FAISS vector index for top-k matching jobs in sub-millisecond C++ time.
+        
+        Returns:
+            List of (job_title, similarity_score, dataset_row_index)
+        """
+        if self.faiss_index is None:
+            self._build_faiss_index()
+
+        if self.faiss_index is None:
+            return []
+
+        if isinstance(query_embedding, torch.Tensor):
+            query_np = query_embedding.detach().cpu().numpy().astype("float32")
+        else:
+            query_np = np.array(query_embedding, dtype="float32")
+
+        if query_np.ndim == 1:
+            query_np = query_np.reshape(1, -1)
+
+        faiss.normalize_L2(query_np)
+        distances, indices = self.faiss_index.search(query_np, top_k)
+
+        matches = []
+        for dist, idx in zip(distances[0], indices[0]):
+            if idx < 0 or idx >= len(self.job_df):
+                continue
+            job_title = self.job_df.iloc[idx]["Job Title"]
+            matches.append((job_title, float(dist), int(idx)))
+
+        return matches
 
     def is_loaded(self):
         """Check if models are loaded"""

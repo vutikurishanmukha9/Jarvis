@@ -1,4 +1,4 @@
-﻿import re
+import re
 import logging
 import numpy as np
 from typing import Tuple, List, Dict, Any
@@ -114,20 +114,9 @@ def analyze_resume(resume_text: str) -> Tuple[str, List[Tuple[str, float]], floa
             convert_to_tensor=True
         )
         
-        # Calculate cosine similarities
-        cosine_scores = util.cos_sim(resume_embed, model_manager.job_embeddings)
-        top_indices = np.argsort(-cosine_scores[0].cpu().numpy())[:TOP_MATCHES]
-
-        # Get top matches
-        matches = []
-        for idx in top_indices:
-            try:
-                job_title = model_manager.job_df.iloc[idx]['Job Title']
-                score = float(cosine_scores[0][idx])
-                matches.append((job_title, score))
-            except (IndexError, KeyError) as e:
-                logger.warning(f"Failed to process match at index {idx}: {e}")
-                continue
+        # High-performance FAISS ANN vector lookup
+        faiss_results = model_manager.search_jobs(resume_embed, top_k=TOP_MATCHES)
+        matches = [(title, score) for title, score, _ in faiss_results]
 
         # Extract features for salary prediction
         features = extract_resume_features(resume_text)

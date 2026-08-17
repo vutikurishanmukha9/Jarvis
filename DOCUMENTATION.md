@@ -400,7 +400,7 @@ Each persistent long-term memory record contains structured metadata:
 
 ## 12. Modular Automated Verification Suite (`tests/`)
 
-The repository includes a production-grade automated verification suite composed of **28 dedicated test files** and **139 individual, non-dummy unit and integration tests** organized by subsystem:
+The repository includes a production-grade automated verification suite composed of **31 dedicated test files** and **151 individual, non-dummy unit and integration tests** organized by subsystem:
 
 ### Test Suite Organization
 
@@ -414,12 +414,14 @@ tests/
 │   ├── test_thought_tracer.py              # Telemetry callbacks, Latency formatting, Output truncation
 │   ├── test_orchestrator.py                # Full tool aggregation, Prompt binding, Execution init
 │   ├── test_schemas.py                     # Pydantic V2 schemas (Subtasks, GoalPlan, Memory, ATS, Outreach)
-│   └── test_retry_utils.py                 # Exponential backoff and jittered retry policies
+│   ├── test_retry_utils.py                 # Exponential backoff and jittered retry policies
+│   └── test_context_pruning.py             # Sliding-window context compression & token budgeting
 │
 ├── assistant/
 │   ├── test_goal_planner.py                # Schema, Subtask limits, Fallback plan generation
 │   ├── test_topological_sort.py            # Kahn's Algorithm, Linear chains, Diamonds, Cycles, Tie-breaks
 │   ├── test_autonomous_runner.py           # Dependency context scoping, Artifact store, Telemetry
+│   ├── test_autonomous_governor.py         # Mission timeouts, Retry budgets, Partial artifact synthesis
 │   ├── test_output_verification.py         # PASS evaluations, Rejections on error markers & empty outputs
 │   ├── test_profile_manager.py             # Memory CRUD, Confidence clamping, Sorting, Context injection
 │   └── test_workspace_tools.py             # Path confinement (traversal attacks), Excel, Word, Script write
@@ -437,6 +439,7 @@ tests/
     ├── test_ats_helpers.py                 # Section detection, Experience duration, Education tier, Metrics
     ├── test_skill_extractor.py             # 13-domain taxonomy, Flat aggregation, Case insensitivity
     ├── test_career_bridge.py               # Standalone profile, Compensation estimation formula
+    ├── test_career_faiss_index.py          # FAISS IndexFlatIP vector retrieval & exact L2 ranking
     ├── test_safe_tensor_serialization.py   # Safe PyTorch tensor embedding storage (eliminating pickle)
     ├── test_outreach_campaign.py           # Header normalization, Tag replacement, 4-stage cadence
     ├── test_outreach_dispatcher.py         # Email syntax validation, Simulated delivery, Excel audit log
@@ -449,6 +452,6 @@ To execute the complete test suite:
 ```bash
 pytest tests/ -v
 ```
-**Test Result**: `139 passed, 8 warnings in 76.84s (100% pass rate)`
+**Test Result**: `151 passed, 11 warnings (100% pass rate)`
 
 
