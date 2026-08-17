@@ -39,6 +39,7 @@ from ..config import PERSONAS, PROVIDERS
 from ..modules.career import get_career_tools
 from ..modules.outreach import get_outreach_tools
 from ..modules.vision import get_and_clear_annotated_images, get_vision_tools
+from ..tools.browser_tools import get_browser_tools
 from ..tools.python_executor import get_and_clear_figure_buffer, python_interpreter
 from ..tools.web_tools import get_web_tools
 from .session_manager import SessionManager
@@ -148,7 +149,10 @@ class JarvisOrchestrator:
         # 6. HR Outreach & Campaign Tools
         tools.extend(get_outreach_tools())
 
-        # 7. Universal Document RAG Tool (if documents uploaded)
+        # 7. Browser Navigation & Interaction Tools
+        tools.extend(get_browser_tools())
+
+        # 8. Universal Document RAG Tool (if documents uploaded)
         if self.document_tool:
             tools.append(self.document_tool)
 
@@ -215,7 +219,26 @@ class JarvisOrchestrator:
                 )
             )
 
-        # 4. Document RAG & Knowledge Retrieval Sub-Agent
+        # 4. Autonomous Web Navigation & Browser Interaction Sub-Agent
+        browser_tools = get_browser_tools()
+        if browser_tools:
+            subagents.append(
+                SubAgent(
+                    name="browser_specialist",
+                    description=(
+                        "Specialized in autonomous web navigation, element clicking, form submission, "
+                        "data scraping, and browser viewport interaction."
+                    ),
+                    tools=browser_tools,
+                    system_prompt=(
+                        "You are the Autonomous Web Navigation Specialist for Jarvis. "
+                        "Navigate web applications, click interactive elements, fill forms, "
+                        "extract structured tabular content, and inspect web page states."
+                    ),
+                )
+            )
+
+        # 5. Document RAG & Knowledge Retrieval Sub-Agent
         if self.document_tool:
             subagents.append(
                 SubAgent(

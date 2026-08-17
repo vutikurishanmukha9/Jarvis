@@ -197,6 +197,13 @@ graph LR
   - *Word Generator*: Produces formatted `.docx` reports and whitepapers via `python-docx`.
   - *Markdown & Code Generator*: Writes structured `.md`, `.json`, `.csv`, and `.py` scripts directly to the workspace.
 
+### 5.5. Autonomous Browser Navigation & Interaction Suite (`src/tools/browser_tools.py`)
+- **Web Navigation**: URL navigation, scheme validation, private IP SSRF filters, multi-tab switching, and history backward traversal.
+- **Interactive Clicking**: CSS selector targeting (`#id`, `.class`) and visible text anchor matching with automatic link redirection.
+- **Form Automation**: Named input field population, placeholder matching, textarea handling, and multi-field form submission payloads.
+- **Clean Scraping**: JavaScript/CSS decomposition, structural text extraction, and HTML table conversion to Markdown format.
+- **Browser Interaction**: Incremental viewport scrolling (up/down), session inspection, and visual telemetry screenshot capture.
+
 ---
 
 ## 6. Pydantic V2 Domain Data Contracts (`src/core/schemas.py`)

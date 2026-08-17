@@ -86,11 +86,11 @@ J.A.R.V.I.S. is architected upon scoped pillars from **Deep Agents** and **LangG
 
 ### The 6 Deep Agents Pillars
 1. **Planning**: Multi-step goal decomposition and Kahn's topological DAG dependency execution.
-2. **Subagents**: Isolated domain-specific subagents (`career_specialist`, `outreach_specialist`, `vision_analyst`, `document_researcher`).
+2. **Subagents**: Isolated domain-specific subagents (`career_specialist`, `outreach_specialist`, `vision_analyst`, `browser_specialist`, `document_researcher`).
 3. **Context**: Sliding-window context compaction, token budgeting, and head/tail conversation turn preservation.
 4. **Skills**: Modular skill registration, capability discovery, and dynamic ATS taxonomy matching.
 5. **Filesystem**: Sandboxed workspace file operations with native `.xlsx`, `.docx`, `.md`, `.json`, `.csv` artifact generation.
-6. **Tool Orchestration**: Multi-modal tool execution, sandbox isolation (Python REPL, Web SSRF guards, YOLOv8/OCR), and real-time `ThoughtStepTracer` telemetry.
+6. **Tool Orchestration**: Multi-modal tool execution, sandbox isolation (Python REPL, Web SSRF guards, Browser Automation, YOLOv8/OCR), and real-time `ThoughtStepTracer` telemetry.
 
 ### The 5 LangGraph Pillars
 1. **State**: Strongly-typed state schemas (`TypedDict`) and `add_messages` message accumulator reducers.
@@ -98,6 +98,13 @@ J.A.R.V.I.S. is architected upon scoped pillars from **Deep Agents** and **LangG
 3. **Interrupts**: Human-in-the-loop pause and resumption triggers (`interrupt_on`) for high-stakes actions.
 4. **Checkpoints**: Thread-scoped memory persistence and multi-turn state resumption via `MemorySaver`.
 5. **Custom Workflows**: Declarative `StateGraph` node routing, START/END boundaries, and conditional branching.
+
+### The 5 Browser-Use Capabilities
+1. **Web Navigation**: URL navigation, SSRF-guarded domain resolution, session history forward/back, and tab switching.
+2. **Clicking**: Interactive element triggering via CSS selectors (`#btn`, `.apply`) and visible text anchors with automatic link redirection.
+3. **Forms**: Automated input field population, placeholder matching, textarea handling, and multi-field form submission.
+4. **Scraping**: Noise-filtered web content extraction (stripping scripts and styles) and structured HTML-to-Markdown table parsing.
+5. **Browser Interaction**: Viewport scrolling (up/down increments), session inspection, and visual telemetry screenshot capture.
 
 ---
 
