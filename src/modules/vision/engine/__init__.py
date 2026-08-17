@@ -1,7 +1,7 @@
 """
 Multimodal AI System package.
 
-This package provides a comprehensive multimodal AI system that combines 
+This package provides a comprehensive multimodal AI system that combines
 computer vision and natural language processing for image analysis.
 
 Modules:
@@ -16,48 +16,47 @@ Modules:
 
 Example usage:
     from src.multimodal_system import MultimodalAI
-    
+
     system = MultimodalAI()
     results = system.process("image.jpg", "What do you see?")
     print(results['answer'])
 """
 
 # Version
+# Configuration
+from .config import Config, get_config, set_config
 from .constants import VERSION, VERSION_INFO
+
+# Exceptions
+from .exceptions import (
+    ConfigurationError,
+    ImageFormatError,
+    ImageLoadError,
+    ImageProcessingError,
+    LLMError,
+    ModelInitializationError,
+    ModelLoadError,
+    MultimodalAIError,
+    ObjectDetectionError,
+    OCRError,
+)
 
 # Core classes
 from .image_processor import ImageProcessor
 from .llm_integration import LLMProcessor
 from .multimodal_system import MultimodalAI
 
-# Configuration
-from .config import Config, get_config, set_config
-
-# Exceptions
-from .exceptions import (
-    MultimodalAIError,
-    ImageProcessingError,
-    ImageLoadError,
-    ImageFormatError,
-    ObjectDetectionError,
-    ModelLoadError,
-    LLMError,
-    ModelInitializationError,
-    OCRError,
-    ConfigurationError,
-)
-
 # Utilities
 from .utils import (
-    load_image,
-    load_image_pil,
-    resize_image,
-    normalize_image,
     convert_bgr_to_rgb,
     convert_rgb_to_bgr,
-    validate_image_format,
     draw_bounding_box,
-    get_image_info
+    get_image_info,
+    load_image,
+    load_image_pil,
+    normalize_image,
+    resize_image,
+    validate_image_format,
 )
 
 __version__ = VERSION
@@ -68,17 +67,14 @@ __all__ = [
     "VERSION",
     "VERSION_INFO",
     "__version__",
-    
     # Core classes
     "ImageProcessor",
-    "LLMProcessor", 
+    "LLMProcessor",
     "MultimodalAI",
-    
     # Configuration
     "Config",
     "get_config",
     "set_config",
-    
     # Exceptions
     "MultimodalAIError",
     "ImageProcessingError",
@@ -90,7 +86,6 @@ __all__ = [
     "ModelInitializationError",
     "OCRError",
     "ConfigurationError",
-    
     # Utilities
     "load_image",
     "load_image_pil",

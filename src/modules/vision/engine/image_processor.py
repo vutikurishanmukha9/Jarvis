@@ -8,18 +8,16 @@ This module provides the ImageProcessor class that handles:
 - Text extraction using Tesseract OCR
 """
 
-import cv2
-import numpy as np
-from ultralytics import YOLO
-import pytesseract
-from typing import List, Dict, Tuple, Optional, Any
 import logging
 from collections import Counter
+from typing import Any, Dict, List, Optional, Tuple
 
-from .utils import (
-    load_image, resize_image, normalize_image, convert_bgr_to_rgb,
-    draw_bounding_box, get_image_info
-)
+import cv2
+import numpy as np
+import pytesseract
+from ultralytics import YOLO
+
+from .utils import convert_bgr_to_rgb, draw_bounding_box, get_image_info, load_image, normalize_image, resize_image
 
 # Set up logging
 logger = logging.getLogger(__name__)
@@ -62,8 +60,9 @@ class ImageProcessor:
             logger.error(f"Failed to load YOLO model {self.yolo_model_path}: {str(e)}")
             self.yolo_model = None
 
-    def preprocess(self, image_path: str, target_size: Tuple[int, int] = (640, 640),
-                  normalize: bool = True) -> Optional[np.ndarray]:
+    def preprocess(
+        self, image_path: str, target_size: Tuple[int, int] = (640, 640), normalize: bool = True
+    ) -> Optional[np.ndarray]:
         """
         Preprocess an image for analysis.
 
@@ -98,8 +97,7 @@ class ImageProcessor:
             logger.error(f"Error preprocessing image {image_path}: {str(e)}")
             return None
 
-    def detect_objects(self, confidence_threshold: float = 0.5, 
-                      iou_threshold: float = 0.45) -> List[Dict[str, Any]]:
+    def detect_objects(self, confidence_threshold: float = 0.5, iou_threshold: float = 0.45) -> List[Dict[str, Any]]:
         """
         Detect objects in the current image using YOLOv8.
 
@@ -120,12 +118,7 @@ class ImageProcessor:
 
         try:
             # Run YOLO inference
-            results = self.yolo_model(
-                self.current_image,
-                conf=confidence_threshold,
-                iou=iou_threshold,
-                verbose=False
-            )
+            results = self.yolo_model(self.current_image, conf=confidence_threshold, iou=iou_threshold, verbose=False)
 
             detections = []
 
@@ -133,7 +126,7 @@ class ImageProcessor:
             for result in results:
                 boxes = result.boxes
                 if boxes is not None:
-                    for i, box in enumerate(boxes):
+                    for box in boxes:
                         # Extract bounding box coordinates
                         x1, y1, x2, y2 = box.xyxy[0].cpu().numpy().astype(int)
                         confidence = float(box.conf[0].cpu().numpy())
@@ -141,12 +134,12 @@ class ImageProcessor:
                         class_name = self.yolo_model.names[class_id]
 
                         detection = {
-                            'class_id': class_id,
-                            'class_name': class_name,
-                            'confidence': confidence,
-                            'bbox': (x1, y1, x2, y2),
-                            'center': ((x1 + x2) // 2, (y1 + y2) // 2),
-                            'area': (x2 - x1) * (y2 - y1)
+                            "class_id": class_id,
+                            "class_name": class_name,
+                            "confidence": confidence,
+                            "bbox": (x1, y1, x2, y2),
+                            "center": ((x1 + x2) // 2, (y1 + y2) // 2),
+                            "area": (x2 - x1) * (y2 - y1),
                         }
 
                         detections.append(detection)
@@ -158,7 +151,7 @@ class ImageProcessor:
             logger.error(f"Error in object detection: {str(e)}")
             return []
 
-    def extract_colors(self, num_colors: int = 5, method: str = 'kmeans') -> List[Dict[str, Any]]:
+    def extract_colors(self, num_colors: int = 5, method: str = "kmeans") -> List[Dict[str, Any]]:
         """
         Extract dominant colors from the current image.
 
@@ -174,9 +167,9 @@ class ImageProcessor:
             return []
 
         try:
-            if method == 'kmeans':
+            if method == "kmeans":
                 return self._extract_colors_kmeans(num_colors)
-            elif method == 'histogram':
+            elif method == "histogram":
                 return self._extract_colors_histogram(num_colors)
             else:
                 logger.error(f"Unknown color extraction method: {method}")
@@ -206,16 +199,16 @@ class ImageProcessor:
             percentage = (np.sum(labels == i) / len(labels)) * 100
 
             color_info = {
-                'rgb': tuple(center),
-                'bgr': tuple(center[::-1]),  # Reverse for BGR
-                'hex': f"#{center[0]:02x}{center[1]:02x}{center[2]:02x}",
-                'percentage': round(percentage, 2),
-                'pixel_count': int(np.sum(labels == i))
+                "rgb": tuple(center),
+                "bgr": tuple(center[::-1]),  # Reverse for BGR
+                "hex": f"#{center[0]:02x}{center[1]:02x}{center[2]:02x}",
+                "percentage": round(percentage, 2),
+                "pixel_count": int(np.sum(labels == i)),
             }
             colors.append(color_info)
 
         # Sort by percentage (descending)
-        colors.sort(key=lambda x: x['percentage'], reverse=True)
+        colors.sort(key=lambda x: x["percentage"], reverse=True)
 
         logger.info(f"Extracted {len(colors)} dominant colors using K-means")
         return colors
@@ -241,11 +234,11 @@ class ImageProcessor:
             percentage = (count / total_pixels) * 100
 
             color_info = {
-                'rgb': color,
-                'bgr': color[::-1],  # Reverse for BGR
-                'hex': f"#{color[0]:02x}{color[1]:02x}{color[2]:02x}",
-                'percentage': round(percentage, 2),
-                'pixel_count': count
+                "rgb": color,
+                "bgr": color[::-1],  # Reverse for BGR
+                "hex": f"#{color[0]:02x}{color[1]:02x}{color[2]:02x}",
+                "percentage": round(percentage, 2),
+                "pixel_count": count,
             }
             colors.append(color_info)
 
@@ -264,30 +257,28 @@ class ImageProcessor:
         """
         if self.current_image is None:
             logger.error("No image loaded for text extraction")
-            return {'text': '', 'confidence': 0, 'words': []}
+            return {"text": "", "confidence": 0, "words": []}
 
         try:
             # Default preprocessing configuration
             if preprocessing_config is None:
                 preprocessing_config = {
-                    'convert_to_gray': True,
-                    'apply_gaussian_blur': True,
-                    'apply_threshold': True,
-                    'threshold_type': cv2.THRESH_BINARY + cv2.THRESH_OTSU,
-                    'morph_operations': True
+                    "convert_to_gray": True,
+                    "apply_gaussian_blur": True,
+                    "apply_threshold": True,
+                    "threshold_type": cv2.THRESH_BINARY + cv2.THRESH_OTSU,
+                    "morph_operations": True,
                 }
 
             # Preprocess image for better OCR results
             processed_image = self._preprocess_for_ocr(preprocessing_config)
 
             # Configure Tesseract
-            custom_config = r'--oem 3 --psm 6'
+            custom_config = r"--oem 3 --psm 6"
 
             # Extract text with detailed information
             text_data = pytesseract.image_to_data(
-                processed_image, 
-                config=custom_config, 
-                output_type=pytesseract.Output.DICT
+                processed_image, config=custom_config, output_type=pytesseract.Output.DICT
             )
 
             # Extract simple text
@@ -297,33 +288,33 @@ class ImageProcessor:
             words = []
             confidences = []
 
-            for i in range(len(text_data['text'])):
-                if int(text_data['conf'][i]) > 0:  # Filter out low confidence
+            for i in range(len(text_data["text"])):
+                if int(text_data["conf"][i]) > 0:  # Filter out low confidence
                     word_info = {
-                        'text': text_data['text'][i].strip(),
-                        'confidence': int(text_data['conf'][i]),
-                        'bbox': (
-                            text_data['left'][i],
-                            text_data['top'][i],
-                            text_data['left'][i] + text_data['width'][i],
-                            text_data['top'][i] + text_data['height'][i]
+                        "text": text_data["text"][i].strip(),
+                        "confidence": int(text_data["conf"][i]),
+                        "bbox": (
+                            text_data["left"][i],
+                            text_data["top"][i],
+                            text_data["left"][i] + text_data["width"][i],
+                            text_data["top"][i] + text_data["height"][i],
                         ),
-                        'level': text_data['level'][i]
+                        "level": text_data["level"][i],
                     }
 
-                    if word_info['text']:  # Only add non-empty text
+                    if word_info["text"]:  # Only add non-empty text
                         words.append(word_info)
-                        confidences.append(word_info['confidence'])
+                        confidences.append(word_info["confidence"])
 
             # Calculate average confidence
             avg_confidence = np.mean(confidences) if confidences else 0
 
             result = {
-                'text': full_text.strip(),
-                'confidence': round(avg_confidence, 2),
-                'words': words,
-                'word_count': len([w for w in words if w['text']]),
-                'preprocessing_used': preprocessing_config
+                "text": full_text.strip(),
+                "confidence": round(avg_confidence, 2),
+                "words": words,
+                "word_count": len([w for w in words if w["text"]]),
+                "preprocessing_used": preprocessing_config,
             }
 
             logger.info(f"Extracted text: '{result['text'][:50]}...' with {len(words)} words")
@@ -331,7 +322,7 @@ class ImageProcessor:
 
         except Exception as e:
             logger.error(f"Error extracting text: {str(e)}")
-            return {'text': '', 'confidence': 0, 'words': [], 'error': str(e)}
+            return {"text": "", "confidence": 0, "words": [], "error": str(e)}
 
     def _preprocess_for_ocr(self, config: Dict[str, Any]) -> np.ndarray:
         """Apply preprocessing steps to improve OCR accuracy."""
@@ -339,20 +330,20 @@ class ImageProcessor:
 
         try:
             # Convert to grayscale
-            if config.get('convert_to_gray', True):
+            if config.get("convert_to_gray", True):
                 processed = cv2.cvtColor(processed, cv2.COLOR_BGR2GRAY)
 
             # Apply Gaussian blur to reduce noise
-            if config.get('apply_gaussian_blur', True):
+            if config.get("apply_gaussian_blur", True):
                 processed = cv2.GaussianBlur(processed, (5, 5), 0)
 
             # Apply threshold for better text segmentation
-            if config.get('apply_threshold', True):
-                threshold_type = config.get('threshold_type', cv2.THRESH_BINARY + cv2.THRESH_OTSU)
+            if config.get("apply_threshold", True):
+                threshold_type = config.get("threshold_type", cv2.THRESH_BINARY + cv2.THRESH_OTSU)
                 _, processed = cv2.threshold(processed, 0, 255, threshold_type)
 
             # Apply morphological operations to clean up
-            if config.get('morph_operations', True):
+            if config.get("morph_operations", True):
                 kernel = np.ones((2, 2), np.uint8)
                 processed = cv2.morphologyEx(processed, cv2.MORPH_CLOSE, kernel)
                 processed = cv2.morphologyEx(processed, cv2.MORPH_OPEN, kernel)
@@ -363,8 +354,7 @@ class ImageProcessor:
             logger.error(f"Error in OCR preprocessing: {str(e)}")
             return self.current_image
 
-    def draw_detections(self, detections: List[Dict[str, Any]], 
-                       draw_on_original: bool = True) -> np.ndarray:
+    def draw_detections(self, detections: List[Dict[str, Any]], draw_on_original: bool = True) -> np.ndarray:
         """
         Draw detection results on the image.
 
@@ -389,27 +379,28 @@ class ImageProcessor:
         try:
             # Define colors for different classes
             colors = [
-                (255, 0, 0), (0, 255, 0), (0, 0, 255), (255, 255, 0),
-                (255, 0, 255), (0, 255, 255), (128, 0, 128), (255, 165, 0)
+                (255, 0, 0),
+                (0, 255, 0),
+                (0, 0, 255),
+                (255, 255, 0),
+                (255, 0, 255),
+                (0, 255, 255),
+                (128, 0, 128),
+                (255, 165, 0),
             ]
 
             for i, detection in enumerate(detections):
                 color = colors[i % len(colors)]
                 label = f"{detection['class_name']}: {detection['confidence']:.2f}"
 
-                result_image = draw_bounding_box(
-                    result_image, 
-                    detection['bbox'], 
-                    label, 
-                    color
-                )
+                result_image = draw_bounding_box(result_image, detection["bbox"], label, color)
 
             logger.info(f"Drew {len(detections)} detections on image")
             return result_image
 
         except Exception as e:
             logger.error(f"Error drawing detections: {str(e)}")
-            return result_image if 'result_image' in locals() else np.zeros((100, 100, 3), dtype=np.uint8)
+            return result_image if "result_image" in locals() else np.zeros((100, 100, 3), dtype=np.uint8)
 
     def get_image_statistics(self) -> Dict[str, Any]:
         """
@@ -427,20 +418,20 @@ class ImageProcessor:
             # Add more detailed statistics
             if len(self.current_image.shape) == 3:
                 # Color image statistics
-                for i, channel in enumerate(['Blue', 'Green', 'Red']):
+                for i, channel in enumerate(["Blue", "Green", "Red"]):
                     channel_data = self.current_image[:, :, i]
-                    stats[f'{channel.lower()}_mean'] = float(np.mean(channel_data))
-                    stats[f'{channel.lower()}_std'] = float(np.std(channel_data))
-                    stats[f'{channel.lower()}_min'] = int(np.min(channel_data))
-                    stats[f'{channel.lower()}_max'] = int(np.max(channel_data))
+                    stats[f"{channel.lower()}_mean"] = float(np.mean(channel_data))
+                    stats[f"{channel.lower()}_std"] = float(np.std(channel_data))
+                    stats[f"{channel.lower()}_min"] = int(np.min(channel_data))
+                    stats[f"{channel.lower()}_max"] = int(np.max(channel_data))
 
             # Calculate brightness and contrast
             gray = cv2.cvtColor(self.current_image, cv2.COLOR_BGR2GRAY)
-            stats['brightness'] = float(np.mean(gray))
-            stats['contrast'] = float(np.std(gray))
+            stats["brightness"] = float(np.mean(gray))
+            stats["contrast"] = float(np.std(gray))
 
             # Calculate sharpness (using Laplacian variance)
-            stats['sharpness'] = float(cv2.Laplacian(gray, cv2.CV_64F).var())
+            stats["sharpness"] = float(cv2.Laplacian(gray, cv2.CV_64F).var())
 
             return stats
 

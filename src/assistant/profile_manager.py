@@ -15,12 +15,11 @@ Each memory entry contains:
 
 import json
 import logging
-import time
 import threading
-from pathlib import Path
-from typing import Dict, Any, List, Optional
+import time
+from typing import Any, Dict, List, Optional
 
-from ..config import ASSISTANT_DIR, DEFAULT_USER_NAME, DEFAULT_ASSISTANT_NAME
+from ..config import ASSISTANT_DIR, DEFAULT_ASSISTANT_NAME, DEFAULT_USER_NAME
 
 logger = logging.getLogger(__name__)
 
@@ -35,8 +34,9 @@ DEFAULT_PROFILE: Dict[str, Any] = {
     "preferred_style": "Concise, highly structured, executive-ready, proactive",
     "auto_execute_safe_code": True,
     "default_workspace": "workspace",
-    "custom_instructions": "Always deliver actionable outputs. When writing reports or datasets, format cleanly and save to workspace."
+    "custom_instructions": "Always deliver actionable outputs. When writing reports or datasets, format cleanly and save to workspace.",
 }
+
 
 class ProfileManager:
     """Manages user profile configuration and persistent memory with full lifecycle support."""
@@ -117,15 +117,10 @@ class ProfileManager:
             return []
 
     @staticmethod
-    def add_memory(
-        fact: str,
-        category: str = "general",
-        source: str = "conversation",
-        confidence: float = 1.0
-    ) -> bool:
+    def add_memory(fact: str, category: str = "general", source: str = "conversation", confidence: float = 1.0) -> bool:
         """
         Add a persistent memory fact about the user or projects.
-        
+
         Args:
             fact: The information to remember.
             category: Classification (general, preference, project, skill, etc.)
@@ -133,15 +128,16 @@ class ProfileManager:
             confidence: Reliability score 0.0-1.0 (1.0 = user-stated fact).
         """
         import uuid
+
         memories = ProfileManager.load_memories()
         entry = {
-            "id": f"mem_{int(time.time()*1000)}_{uuid.uuid4().hex[:6]}",
+            "id": f"mem_{int(time.time() * 1000)}_{uuid.uuid4().hex[:6]}",
             "fact": fact.strip(),
             "category": category,
             "source": source,
             "confidence": max(0.0, min(1.0, confidence)),
             "timestamp": time.strftime("%Y-%m-%d %H:%M:%S"),
-            "updated_at": None
+            "updated_at": None,
         }
         memories.append(entry)
         return ProfileManager._save_memories(memories)
@@ -150,10 +146,10 @@ class ProfileManager:
     def delete_memory(memory_id: str) -> bool:
         """
         Delete a specific memory by its ID.
-        
+
         Args:
             memory_id: The unique ID of the memory to delete (e.g., "mem_1234567890").
-            
+
         Returns:
             True if the memory was found and deleted, False otherwise.
         """
@@ -172,17 +168,17 @@ class ProfileManager:
         memory_id: str,
         new_fact: Optional[str] = None,
         new_category: Optional[str] = None,
-        new_confidence: Optional[float] = None
+        new_confidence: Optional[float] = None,
     ) -> bool:
         """
         Update an existing memory entry.
-        
+
         Args:
             memory_id: The unique ID of the memory to update.
             new_fact: Updated fact text (None = keep existing).
             new_category: Updated category (None = keep existing).
             new_confidence: Updated confidence score (None = keep existing).
-            
+
         Returns:
             True if the memory was found and updated, False otherwise.
         """
@@ -228,11 +224,13 @@ class ProfileManager:
             # Show most recent 10 memories, sorted by confidence (high first)
             sorted_mems = sorted(memories, key=lambda m: m.get("confidence", 1.0), reverse=True)
             recent = sorted_mems[:10]
-            memory_bullets = "\n".join([
-                f"- [{m.get('category', 'general')}] {m['fact']} "
-                f"(confidence: {m.get('confidence', 1.0):.1f}, logged {m['timestamp']})"
-                for m in recent
-            ])
+            memory_bullets = "\n".join(
+                [
+                    f"- [{m.get('category', 'general')}] {m['fact']} "
+                    f"(confidence: {m.get('confidence', 1.0):.1f}, logged {m['timestamp']})"
+                    for m in recent
+                ]
+            )
         else:
             memory_bullets = "No prior long-term memories logged yet."
 

@@ -2,10 +2,9 @@
 Tests for GoalPlanner schema validation, task bounding, and fallback plan generation.
 """
 
-import json
-import pytest
-from src.assistant.goal_planner import GoalPlanner, PLANNING_SYSTEM_PROMPT
+from src.assistant.goal_planner import PLANNING_SYSTEM_PROMPT, GoalPlanner
 from src.config import MAX_AUTONOMOUS_SUBTASKS
+
 
 def test_planning_prompt_schema_contract():
     """Verify system planning prompt defines JSON schema with depends_on."""
@@ -13,6 +12,7 @@ def test_planning_prompt_schema_contract():
     assert "expected_deliverable" in PLANNING_SYSTEM_PROMPT
     assert "tasks" in PLANNING_SYSTEM_PROMPT
     assert "goal_summary" in PLANNING_SYSTEM_PROMPT
+
 
 def test_goal_planner_fallback_structure():
     """Verify fallback plan generation when LLM client is unconfigured or errors."""
@@ -28,6 +28,7 @@ def test_goal_planner_fallback_structure():
     assert plan["tasks"][0]["status"] == "pending"
     assert plan["tasks"][1]["status"] == "pending"
 
+
 def test_goal_planner_initializes_required_fields():
     """Verify task fields (attempts, status, result) are initialized."""
     planner = GoalPlanner(api_provider="Custom", api_key="dummy")
@@ -40,11 +41,13 @@ def test_goal_planner_initializes_required_fields():
         assert "expected_deliverable" in task
         assert "instruction" in task
 
+
 def test_goal_planner_task_count_bound():
     """Verify tasks do not exceed MAX_AUTONOMOUS_SUBTASKS."""
     planner = GoalPlanner(api_provider="Custom", api_key="dummy")
     plan = planner.plan_goal("Exhaustive multi-step project")
     assert len(plan["tasks"]) <= MAX_AUTONOMOUS_SUBTASKS
+
 
 def test_goal_planner_context_injection():
     """Verify goal planner embeds context data into plan prompt without error."""

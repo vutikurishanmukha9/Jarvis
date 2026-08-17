@@ -8,11 +8,11 @@ This module provides centralized configuration with:
 - Type-safe access to settings
 """
 
+import logging
 import os
 from dataclasses import dataclass, field
-from typing import Optional, Dict, Any, List
 from pathlib import Path
-import logging
+from typing import Any, Dict, List, Optional
 
 logger = logging.getLogger(__name__)
 
@@ -20,20 +20,23 @@ logger = logging.getLogger(__name__)
 @dataclass
 class YOLOConfig:
     """Configuration for YOLO object detection."""
+
     model_name: str = "yolov8n.pt"
     confidence_threshold: float = 0.5
     iou_threshold: float = 0.45
     max_detections: int = 100
-    
+
     # Available models from smallest to largest
-    AVAILABLE_MODELS: List[str] = field(default_factory=lambda: [
-        "yolov8n.pt",  # Nano
-        "yolov8s.pt",  # Small
-        "yolov8m.pt",  # Medium
-        "yolov8l.pt",  # Large
-        "yolov8x.pt",  # Extra Large
-    ])
-    
+    AVAILABLE_MODELS: List[str] = field(
+        default_factory=lambda: [
+            "yolov8n.pt",  # Nano
+            "yolov8s.pt",  # Small
+            "yolov8m.pt",  # Medium
+            "yolov8l.pt",  # Large
+            "yolov8x.pt",  # Extra Large
+        ]
+    )
+
     def validate(self) -> bool:
         """Validate YOLO configuration."""
         if not 0.0 <= self.confidence_threshold <= 1.0:
@@ -46,6 +49,7 @@ class YOLOConfig:
 @dataclass
 class BLIPConfig:
     """Configuration for BLIP vision-language model."""
+
     model_name: str = "Salesforce/blip-image-captioning-base"
     device: str = "auto"  # auto, cpu, cuda, mps
     torch_dtype: str = "auto"  # auto, float16, float32
@@ -53,14 +57,16 @@ class BLIPConfig:
     max_answer_length: int = 100
     num_beams: int = 5
     temperature: float = 1.0
-    
-    AVAILABLE_MODELS: List[str] = field(default_factory=lambda: [
-        "Salesforce/blip-image-captioning-base",
-        "Salesforce/blip-image-captioning-large",
-        "Salesforce/blip-vqa-base",
-        "Salesforce/blip-vqa-capfilt-large",
-    ])
-    
+
+    AVAILABLE_MODELS: List[str] = field(
+        default_factory=lambda: [
+            "Salesforce/blip-image-captioning-base",
+            "Salesforce/blip-image-captioning-large",
+            "Salesforce/blip-vqa-base",
+            "Salesforce/blip-vqa-capfilt-large",
+        ]
+    )
+
     def validate(self) -> bool:
         """Validate BLIP configuration."""
         if self.device not in ["auto", "cpu", "cuda", "mps"]:
@@ -73,6 +79,7 @@ class BLIPConfig:
 @dataclass
 class OCRConfig:
     """Configuration for OCR text extraction."""
+
     enabled: bool = True
     language: str = "eng"
     preprocess: bool = True
@@ -82,10 +89,11 @@ class OCRConfig:
 @dataclass
 class ColorConfig:
     """Configuration for color extraction."""
+
     enabled: bool = True
     num_colors: int = 5
     method: str = "kmeans"  # kmeans, histogram
-    
+
     def validate(self) -> bool:
         """Validate color configuration."""
         if not 1 <= self.num_colors <= 20:
@@ -98,17 +106,18 @@ class ColorConfig:
 @dataclass
 class ImageConfig:
     """Configuration for image processing."""
+
     target_width: int = 640
     target_height: int = 640
     normalize: bool = True
     maintain_aspect_ratio: bool = True
-    
-    SUPPORTED_FORMATS: List[str] = field(default_factory=lambda: [
-        ".jpg", ".jpeg", ".png", ".bmp", ".tiff", ".tif", ".webp", ".gif"
-    ])
-    
+
+    SUPPORTED_FORMATS: List[str] = field(
+        default_factory=lambda: [".jpg", ".jpeg", ".png", ".bmp", ".tiff", ".tif", ".webp", ".gif"]
+    )
+
     MAX_FILE_SIZE_MB: int = 50
-    
+
     @property
     def target_size(self) -> tuple:
         return (self.target_width, self.target_height)
@@ -117,16 +126,17 @@ class ImageConfig:
 @dataclass
 class WebAppConfig:
     """Configuration for the Streamlit web application."""
+
     title: str = "Multimodal AI System"
     default_theme: str = "light"  # light, dark
     max_history_items: int = 5
     enable_face_detection: bool = True
     enable_quality_analysis: bool = True
     enable_url_loading: bool = True
-    
+
     # Cache settings
     cache_ttl_seconds: int = 3600
-    
+
     # Display settings
     show_debug_info: bool = False
 
@@ -134,14 +144,13 @@ class WebAppConfig:
 @dataclass
 class LoggingConfig:
     """Configuration for logging."""
+
     level: str = "INFO"
     format: str = "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
     file_path: Optional[str] = None
-    
-    VALID_LEVELS: List[str] = field(default_factory=lambda: [
-        "DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"
-    ])
-    
+
+    VALID_LEVELS: List[str] = field(default_factory=lambda: ["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"])
+
     def get_level(self) -> int:
         """Get logging level as integer."""
         return getattr(logging, self.level.upper(), logging.INFO)
@@ -150,6 +159,7 @@ class LoggingConfig:
 @dataclass
 class Config:
     """Main configuration class combining all settings."""
+
     yolo: YOLOConfig = field(default_factory=YOLOConfig)
     blip: BLIPConfig = field(default_factory=BLIPConfig)
     ocr: OCRConfig = field(default_factory=OCRConfig)
@@ -157,46 +167,46 @@ class Config:
     image: ImageConfig = field(default_factory=ImageConfig)
     webapp: WebAppConfig = field(default_factory=WebAppConfig)
     logging: LoggingConfig = field(default_factory=LoggingConfig)
-    
+
     # Paths
     project_root: Path = field(default_factory=lambda: Path(__file__).parent.parent)
     data_dir: Path = field(default_factory=lambda: Path(__file__).parent.parent / "data")
     cache_dir: Path = field(default_factory=lambda: Path.home() / ".cache" / "multimodal_ai")
-    
+
     @classmethod
     def from_env(cls) -> "Config":
         """Create configuration from environment variables."""
         config = cls()
-        
+
         # YOLO settings
         if os.getenv("YOLO_MODEL"):
             config.yolo.model_name = os.getenv("YOLO_MODEL")
         if os.getenv("YOLO_CONFIDENCE"):
             config.yolo.confidence_threshold = float(os.getenv("YOLO_CONFIDENCE"))
-        
+
         # BLIP settings
         if os.getenv("BLIP_MODEL"):
             config.blip.model_name = os.getenv("BLIP_MODEL")
         if os.getenv("BLIP_DEVICE"):
             config.blip.device = os.getenv("BLIP_DEVICE")
-        
+
         # Logging
         if os.getenv("LOG_LEVEL"):
             config.logging.level = os.getenv("LOG_LEVEL")
-        
+
         # Web app
         if os.getenv("DEFAULT_THEME"):
             config.webapp.default_theme = os.getenv("DEFAULT_THEME")
-        
+
         return config
-    
+
     def validate(self) -> bool:
         """Validate all configuration settings."""
         self.yolo.validate()
         self.blip.validate()
         self.color.validate()
         return True
-    
+
     def to_dict(self) -> Dict[str, Any]:
         """Convert configuration to dictionary."""
         return {

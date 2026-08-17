@@ -14,13 +14,12 @@ Architecture:
 
 import logging
 import time
-from typing import Dict, Any, List, Optional, Callable
-from langchain_core.messages import HumanMessage
+from typing import Any, Callable, Dict, List, Optional
 
 from ..config import MAX_RETRY_PER_TASK, WORKSPACE_DIR
 from ..core.orchestrator import JarvisOrchestrator
-from .workspace_tools import get_workspace_tools
 from .profile_manager import ProfileManager
+from .workspace_tools import get_workspace_tools
 
 logger = logging.getLogger(__name__)
 
@@ -31,7 +30,7 @@ class AutonomousRunner:
     def __init__(
         self,
         orchestrator: Optional[JarvisOrchestrator] = None,
-        step_callback: Optional[Callable[[Dict[str, Any], str, str], None]] = None
+        step_callback: Optional[Callable[[Dict[str, Any], str, str], None]] = None,
     ):
         self.orchestrator = orchestrator
         self.step_callback = step_callback
@@ -60,25 +59,18 @@ class AutonomousRunner:
         context_parts = []
         for dep_id in depends_on:
             if dep_id in self._artifact_store:
-                context_parts.append(
-                    f"[Artifact from {dep_id}]:\n{self._artifact_store[dep_id]}"
-                )
+                context_parts.append(f"[Artifact from {dep_id}]:\n{self._artifact_store[dep_id]}")
 
         if not context_parts:
             return ""
 
         return "\n\nDEPENDENCY ARTIFACTS:\n" + "\n---\n".join(context_parts)
 
-    def _verify_output(
-        self,
-        task_result: str,
-        instruction: str,
-        expected_deliverable: str
-    ) -> Dict[str, Any]:
+    def _verify_output(self, task_result: str, instruction: str, expected_deliverable: str) -> Dict[str, Any]:
         """
         Verify whether a task output satisfies the instruction and expected deliverable.
         Uses the LLM to perform semantic verification rather than just checking for exceptions.
-        
+
         Returns:
             {"passed": True/False, "reason": "explanation"}
         """
@@ -112,10 +104,7 @@ class AutonomousRunner:
         )
 
         try:
-            verify_result = self.orchestrator.run(
-                user_input=verification_prompt,
-                chat_history=[]
-            )
+            verify_result = self.orchestrator.run(user_input=verification_prompt, chat_history=[])
             verify_text = verify_result.get("output", "").strip()
 
             # Parse the verification response
@@ -138,7 +127,7 @@ class AutonomousRunner:
         plan: Dict[str, Any],
         initial_goal: str,
         max_mission_duration_seconds: float = 300.0,
-        max_cumulative_retries: int = 6
+        max_cumulative_retries: int = 6,
     ) -> Dict[str, Any]:
         """
         Execute all subtasks in dependency-aware topological order with enterprise governance.
@@ -163,18 +152,20 @@ class AutonomousRunner:
             if elapsed_time > max_mission_duration_seconds or cumulative_retries >= max_cumulative_retries:
                 timed_out = True
                 task["status"] = "skipped_due_to_timeout"
-                task["result"] = f"Mission exceeded budget (elapsed: {elapsed_time:.1f}s, retries: {cumulative_retries})."
+                task["result"] = (
+                    f"Mission exceeded budget (elapsed: {elapsed_time:.1f}s, retries: {cumulative_retries})."
+                )
                 continue
 
-            task_id = task.get("id", f"task_{idx+1}")
-            task_title = task.get("title", task.get("description", f"Subtask {idx+1}"))
+            task_id = task.get("id", f"task_{idx + 1}")
+            task_title = task.get("title", task.get("description", f"Subtask {idx + 1}"))
             task_instruction = task.get("instruction", task.get("description", ""))
             expected_deliverable = task.get("expected_deliverable", "Actionable result")
             task["status"] = "in_progress"
             task["attempts"] = 1
 
             if self.step_callback:
-                self.step_callback(plan, task_id, f"Executing Subtask {idx+1}/{total_tasks}: {task_title}")
+                self.step_callback(plan, task_id, f"Executing Subtask {idx + 1}/{total_tasks}: {task_title}")
 
             # If no orchestrator is attached, perform simulated execution
             if not self.orchestrator:
@@ -183,7 +174,7 @@ class AutonomousRunner:
                 task["result"] = task_result_text
                 self._artifact_store[task_id] = task_result_text
                 if self.step_callback:
-                    self.step_callback(plan, task_id, f"Finished Subtask {idx+1}/{total_tasks}: COMPLETED")
+                    self.step_callback(plan, task_id, f"Finished Subtask {idx + 1}/{total_tasks}: COMPLETED")
                 continue
 
             # Build dependency-scoped context (not full history)
@@ -191,7 +182,7 @@ class AutonomousRunner:
 
             subtask_prompt = (
                 f"[AUTONOMOUS MISSION: '{initial_goal}']\n"
-                f"CURRENT SUBTASK ({idx+1}/{total_tasks}): {task_title}\n"
+                f"CURRENT SUBTASK ({idx + 1}/{total_tasks}): {task_title}\n"
                 f"SPECIFIC INSTRUCTION: {task_instruction}\n"
                 f"EXPECTED DELIVERABLE: {expected_deliverable}\n"
                 f"{dependency_context}\n\n"
@@ -200,18 +191,20 @@ class AutonomousRunner:
             )
 
             # Execution with verification + self-correction retry loop
-            success = False
             task_result_text = ""
+            verification: Dict[str, Any] = {"passed": False, "reason": "No prior attempt."}
             for attempt in range(1, MAX_RETRY_PER_TASK + 1):
                 try:
                     logger.info(f"Running subtask {task_id} (Attempt {attempt}/{MAX_RETRY_PER_TASK})")
                     run_res = self.orchestrator.run(
-                        user_input=subtask_prompt if attempt == 1 else (
+                        user_input=subtask_prompt
+                        if attempt == 1
+                        else (
                             f"[SELF-CORRECTION RETRY {attempt}]: Previous attempt was inadequate. "
                             f"Reason: {verification.get('reason', 'Unknown')}. "
                             f"Analyze and fix: {subtask_prompt}"
                         ),
-                        chat_history=[]
+                        chat_history=[],
                     )
 
                     task_result_text = run_res.get("output", "")
@@ -220,12 +213,9 @@ class AutonomousRunner:
                     all_annotated_imgs.extend(run_res.get("annotated_images", []))
 
                     # Output Verification: check if result satisfies the instruction
-                    verification = self._verify_output(
-                        task_result_text, task_instruction, expected_deliverable
-                    )
+                    verification = self._verify_output(task_result_text, task_instruction, expected_deliverable)
 
                     if verification["passed"]:
-                        success = True
                         task["status"] = "completed"
                         task["result"] = task_result_text
                         task["verification"] = verification
@@ -234,15 +224,15 @@ class AutonomousRunner:
                     else:
                         cumulative_retries += 1
                         logger.warning(
-                            f"Subtask {task_id} attempt {attempt} failed verification: "
-                            f"{verification['reason']}"
+                            f"Subtask {task_id} attempt {attempt} failed verification: {verification['reason']}"
                         )
                         if attempt < MAX_RETRY_PER_TASK:
                             if self.step_callback:
                                 self.step_callback(
-                                    plan, task_id,
+                                    plan,
+                                    task_id,
                                     f"Verification failed for '{task_title}'. "
-                                    f"Self-correcting (Attempt {attempt+1})..."
+                                    f"Self-correcting (Attempt {attempt + 1})...",
                                 )
                             time.sleep(1.0)
                         else:
@@ -259,14 +249,16 @@ class AutonomousRunner:
                     verification = {"passed": False, "reason": str(e)}
                     if attempt < MAX_RETRY_PER_TASK:
                         if self.step_callback:
-                            self.step_callback(plan, task_id, f"Error in '{task_title}'. Self-correcting (Attempt {attempt+1})...")
+                            self.step_callback(
+                                plan, task_id, f"Error in '{task_title}'. Self-correcting (Attempt {attempt + 1})..."
+                            )
                         time.sleep(1.0)
                     else:
                         task["status"] = "failed"
                         task["result"] = f"Failed after {MAX_RETRY_PER_TASK} attempts: {str(e)}"
 
             if self.step_callback:
-                self.step_callback(plan, task_id, f"Finished Subtask {idx+1}/{total_tasks}: {task['status'].upper()}")
+                self.step_callback(plan, task_id, f"Finished Subtask {idx + 1}/{total_tasks}: {task['status'].upper()}")
 
         # Final synthesis
         plan["status"] = "partially_completed" if timed_out else "completed"
@@ -277,14 +269,10 @@ class AutonomousRunner:
             "final_summary": final_summary,
             "steps": all_steps,
             "figures": all_figures,
-            "annotated_images": all_annotated_imgs
+            "annotated_images": all_annotated_imgs,
         }
 
-    def _generate_mission_summary(
-        self,
-        goal: str,
-        plan: Dict[str, Any]
-    ) -> str:
+    def _generate_mission_summary(self, goal: str, plan: Dict[str, Any]) -> str:
         """Compile a structured final mission briefing."""
         profile = ProfileManager.load_profile()
         user_name = profile.get("user_name", "Boss")
@@ -295,7 +283,7 @@ class AutonomousRunner:
         warned = [t for t in tasks if t.get("status") == "completed_with_warnings"]
 
         lines = [
-            f"# Autonomous Mission Complete",
+            "# Autonomous Mission Complete",
             f"**Assigned Goal**: {goal}",
             f"**Executed For**: {user_name}",
             f"**Completed**: {len(completed)} / {len(tasks)}",
@@ -303,7 +291,7 @@ class AutonomousRunner:
             f"**Warnings**: {len(warned)} / {len(tasks)}",
             "---",
             "### Executive Summary of Deliverables",
-            ""
+            "",
         ]
 
         for t in tasks:
@@ -337,7 +325,7 @@ class AutonomousRunner:
                     if f.is_file():
                         size_kb = round(f.stat().st_size / 1024, 2)
                         lines.append(f"- **`{f.name}`** ({size_kb} KB)")
-        except Exception:
-            pass
+        except Exception as exc:
+            logger.debug("Could not enumerate workspace files for mission summary: %s", exc)
 
         return "\n".join(lines)

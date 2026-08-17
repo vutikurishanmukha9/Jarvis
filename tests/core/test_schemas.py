@@ -4,14 +4,16 @@ Tests for Pydantic V2 Schemas: Subtasks, Goal Plans, Memory Records, User Profil
 
 import pytest
 from pydantic import ValidationError
+
 from src.core.schemas import (
-    SubTaskModel,
+    ATSReportModel,
     GoalPlanModel,
     MemoryEntryModel,
+    OutreachRecipientModel,
+    SubTaskModel,
     UserProfileModel,
-    ATSReportModel,
-    OutreachRecipientModel
 )
+
 
 def test_subtask_model_validation():
     """Verify subtask field validation and status normalization."""
@@ -22,19 +24,17 @@ def test_subtask_model_validation():
         tool="python_interpreter",
         deliverable="Cleaned DataFrame",
         depends_on=[],
-        status="PENDING"
+        status="PENDING",
     )
     assert task.id == "task_01"
     assert task.status == "pending"
 
+
 def test_subtask_model_empty_id_rejected():
     """Verify validation error when subtask ID is whitespace or empty."""
     with pytest.raises(ValidationError):
-        SubTaskModel(
-            id="   ",
-            title="Valid Title",
-            instruction="Valid instruction long enough"
-        )
+        SubTaskModel(id="   ", title="Valid Title", instruction="Valid instruction long enough")
+
 
 def test_goal_plan_dependency_filtering():
     """Verify GoalPlanModel filters non-existent dependency IDs."""
@@ -44,10 +44,16 @@ def test_goal_plan_dependency_filtering():
         estimated_steps=2,
         subtasks=[
             SubTaskModel(id="t1", title="Extract Data", instruction="Extract all CSV data into workspace."),
-            SubTaskModel(id="t2", title="Generate Report", instruction="Write Word report.", depends_on=["t1", "non_existent_t99"])
-        ]
+            SubTaskModel(
+                id="t2",
+                title="Generate Report",
+                instruction="Write Word report.",
+                depends_on=["t1", "non_existent_t99"],
+            ),
+        ],
     )
     assert plan.subtasks[1].depends_on == ["t1"]
+
 
 def test_memory_entry_confidence_clamping():
     """Verify memory confidence is strictly clamped to [0.0, 1.0]."""
@@ -57,6 +63,7 @@ def test_memory_entry_confidence_clamping():
     mem_low = MemoryEntryModel(fact="User likes coffee", confidence=-0.5)
     assert mem_low.confidence == 0.0
 
+
 def test_user_profile_defaults():
     """Verify user profile initializes with sensible executive defaults."""
     profile = UserProfileModel(user_name="Alex", role="CTO")
@@ -64,29 +71,23 @@ def test_user_profile_defaults():
     assert profile.role == "CTO"
     assert "Direct" in profile.preferred_tone
 
+
 def test_ats_report_clamping():
     """Verify ATS report score clamping to [0, 100]."""
     report = ATSReportModel(
-        ats_score=110.0,
-        sub_scores={"keywords": 95.0, "skills": 80.0},
-        suggestions=["Add more action verbs"]
+        ats_score=110.0, sub_scores={"keywords": 95.0, "skills": 80.0}, suggestions=["Add more action verbs"]
     )
     assert report.ats_score == 100.0
+
 
 def test_outreach_recipient_email_validation():
     """Verify RFC email validation passes valid and rejects malformed addresses."""
     valid_rec = OutreachRecipientModel(
-        first_name="Jane",
-        company="Stark Industries",
-        role="VP Engineering",
-        email="jane.doe@stark.com"
+        first_name="Jane", company="Stark Industries", role="VP Engineering", email="jane.doe@stark.com"
     )
     assert valid_rec.email == "jane.doe@stark.com"
 
     with pytest.raises(ValidationError):
         OutreachRecipientModel(
-            first_name="Jane",
-            company="Stark Industries",
-            role="VP",
-            email="invalid-email-address-no-at"
+            first_name="Jane", company="Stark Industries", role="VP", email="invalid-email-address-no-at"
         )

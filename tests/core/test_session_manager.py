@@ -2,16 +2,17 @@
 Tests for multi-session persistence, JSON serialization, and Markdown export.
 """
 
-import pytest
-from langchain_core.messages import HumanMessage, AIMessage
-from src.core.session_manager import SessionManager, SESSIONS_DIR
+from langchain_core.messages import AIMessage, HumanMessage
+
+from src.core.session_manager import SESSIONS_DIR, SessionManager
+
 
 def test_session_creation_and_loading():
     """Verify creating a session, saving messages, and reloading it from disk."""
     session_id = "test_sess_001"
     messages = [
         HumanMessage(content="Analyze technical architecture."),
-        AIMessage(content="The architecture is modular.")
+        AIMessage(content="The architecture is modular."),
     ]
     persona = "JARVIS Supreme"
 
@@ -22,6 +23,7 @@ def test_session_creation_and_loading():
     assert loaded_persona == persona
     assert loaded_msgs[0].content == "Analyze technical architecture."
     assert loaded_msgs[1].content == "The architecture is modular."
+
 
 def test_session_listing_and_deletion():
     """Verify listing all active sessions and cleaning up session file."""
@@ -38,12 +40,13 @@ def test_session_listing_and_deletion():
 
     assert session_id not in SessionManager.list_sessions()
 
+
 def test_session_markdown_transcript_export():
     """Verify formatting session history into a readable Markdown document."""
     session_id = "test_sess_export"
     messages = [
         HumanMessage(content="Run calculation for Q3."),
-        AIMessage(content="Here is the projected Q3 revenue table.")
+        AIMessage(content="Here is the projected Q3 revenue table."),
     ]
     persona = "Data & Vision Scientist"
 
@@ -54,6 +57,7 @@ def test_session_markdown_transcript_export():
     assert "Run calculation for Q3." in md_text
     assert "### JARVIS" in md_text
     assert "Here is the projected Q3 revenue table." in md_text
+
 
 def test_session_manager_nonexistent_handling():
     """Verify graceful handling when loading non-existent session IDs."""

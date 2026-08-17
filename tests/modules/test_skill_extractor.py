@@ -2,8 +2,8 @@
 Tests for Skill Extractor: 13-domain technical skills taxonomy and extraction.
 """
 
-import pytest
 from src.modules.career.scorer.utils.skill_extractor import extract_skills, get_all_skills_flat
+
 
 def test_extract_skills_categorized():
     """Verify extracting skills categorized across technical domains."""
@@ -19,6 +19,7 @@ def test_extract_skills_categorized():
     assert "react" in all_matched
     assert "postgresql" in all_matched
 
+
 def test_extract_skills_case_insensitivity():
     """Verify skill extraction handles UPPERCASE, lowercase, and MixedCase tokens."""
     text = "Proficient in PYTHON, docker, PyTorch, and KUBERNETES."
@@ -27,6 +28,7 @@ def test_extract_skills_case_insensitivity():
     assert "python" in all_matched
     assert "pytorch" in all_matched
     assert "kubernetes" in all_matched
+
 
 def test_get_all_skills_flat():
     """Verify flat listing of extracted skill names."""

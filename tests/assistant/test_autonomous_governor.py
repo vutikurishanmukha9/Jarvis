@@ -2,8 +2,6 @@
 Tests for Autonomous Mission Governor: timeouts, retry budgets, and graceful degradation.
 """
 
-import time
-import pytest
 from src.assistant.autonomous_runner import AutonomousRunner
 
 
@@ -23,10 +21,7 @@ def test_autonomous_governor_respects_max_mission_duration():
 
     # Execute with duration budget = -1.0 (immediate timeout trigger)
     result = runner.execute_plan(
-        plan=plan,
-        initial_goal="Test timeout governance",
-        max_mission_duration_seconds=-0.1,
-        max_cumulative_retries=6
+        plan=plan, initial_goal="Test timeout governance", max_mission_duration_seconds=-0.1, max_cumulative_retries=6
     )
 
     # Verify tasks are marked as skipped due to timeout
@@ -51,7 +46,7 @@ def test_autonomous_governor_respects_max_cumulative_retries():
         plan=plan,
         initial_goal="Test retry limit governance",
         max_mission_duration_seconds=300.0,
-        max_cumulative_retries=0
+        max_cumulative_retries=0,
     )
 
     assert result["plan"]["status"] == "partially_completed"
@@ -73,7 +68,7 @@ def test_autonomous_governor_normal_completion():
         plan=plan,
         initial_goal="Normal mission within budget",
         max_mission_duration_seconds=300.0,
-        max_cumulative_retries=6
+        max_cumulative_retries=6,
     )
 
     assert result["plan"]["status"] == "completed"

@@ -1,4 +1,4 @@
-﻿"""
+"""
 Text Processing Utilities for AI Resume Analyzer
 
 Handles file validation, PDF/TXT text extraction via in-memory BytesIO.
@@ -6,22 +6,19 @@ Handles file validation, PDF/TXT text extraction via in-memory BytesIO.
 
 import io
 import logging
+
 import pdfplumber
 
-from src.modules.career.scorer.config import MAX_TEXT_LENGTH, MAX_PDF_PAGES, MIN_TEXT_LENGTH, ALLOWED_EXTENSIONS
+from src.modules.career.scorer.config import ALLOWED_EXTENSIONS, MAX_PDF_PAGES, MAX_TEXT_LENGTH, MIN_TEXT_LENGTH
 
 logger = logging.getLogger(__name__)
 
 MAX_UPLOAD_BYTES = 16 * 1024 * 1024  # 16 MB hard limit
 
 
-
-
-
 def allowed_file(filename: str) -> bool:
     """Check if file has allowed extension"""
-    return '.' in filename and \
-           filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
+    return "." in filename and filename.rsplit(".", 1)[1].lower() in ALLOWED_EXTENSIONS
 
 
 async def read_upload_bytes(upload_file) -> bytes:
@@ -42,15 +39,16 @@ async def read_upload_bytes(upload_file) -> bytes:
         total += len(chunk)
         if total > MAX_UPLOAD_BYTES:
             raise ValueError(
-                f'File too large ({total // (1024*1024)}+ MB). '
-                f'Maximum allowed size is {MAX_UPLOAD_BYTES // (1024*1024)} MB.'
+                f"File too large ({total // (1024 * 1024)}+ MB). "
+                f"Maximum allowed size is {MAX_UPLOAD_BYTES // (1024 * 1024)} MB."
             )
         chunks.append(chunk)
 
-    return b''.join(chunks)
+    return b"".join(chunks)
 
 
 # ─── PDF extraction ───────────────────────────────────────────────
+
 
 def _extract_pdf_text(source) -> str:
     """
@@ -79,25 +77,23 @@ def _extract_pdf_text(source) -> str:
                     if content:
                         text += content + "\n"
                 except Exception as e:
-                    logger.warning(f"Failed to extract text from page {i+1}: {e}")
+                    logger.warning(f"Failed to extract text from page {i + 1}: {e}")
                     continue
 
         extracted = text.strip()[:MAX_TEXT_LENGTH]
 
         if len(extracted) < MIN_TEXT_LENGTH:
-            raise ValueError(
-                "Insufficient text extracted from PDF. "
-                "Please ensure the PDF contains readable text."
-            )
+            raise ValueError("Insufficient text extracted from PDF. Please ensure the PDF contains readable text.")
         return extracted
 
     except ValueError:
         raise
     except Exception as e:
-        raise ValueError(f"Failed to process PDF: {str(e)}")
+        raise ValueError(f"Failed to process PDF: {str(e)}") from e
 
 
 # ─── Public API ───────────────────────────────────────────────────
+
 
 def extract_text_from_bytes(data: bytes, filename: str) -> str:
     """
@@ -106,21 +102,14 @@ def extract_text_from_bytes(data: bytes, filename: str) -> str:
     Accepts the file content as *bytes* and the original *filename*
     (used only to determine the extension).
     """
-    ext = filename.rsplit('.', 1)[-1].lower()
+    ext = filename.rsplit(".", 1)[-1].lower()
 
-    if ext == 'pdf':
+    if ext == "pdf":
         return _extract_pdf_text(io.BytesIO(data))
-    elif ext == 'txt':
-        content = data.decode('utf-8', errors='ignore').strip()[:MAX_TEXT_LENGTH]
+    elif ext == "txt":
+        content = data.decode("utf-8", errors="ignore").strip()[:MAX_TEXT_LENGTH]
         if len(content) < MIN_TEXT_LENGTH:
-            raise ValueError(
-                "Text file is too short. "
-                "Please provide a resume with at least 50 characters."
-            )
+            raise ValueError("Text file is too short. Please provide a resume with at least 50 characters.")
         return content
     else:
         raise ValueError("Unsupported file type")
-
-
-
-

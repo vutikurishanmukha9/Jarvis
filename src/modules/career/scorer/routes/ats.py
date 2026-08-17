@@ -1,4 +1,4 @@
-﻿"""
+"""
 ATS Score Route for AI Resume Analyzer
 
 Handles ATS score calculation with configurable weights and analysis modes.
@@ -7,41 +7,38 @@ Handles ATS score calculation with configurable weights and analysis modes.
 import logging
 import traceback
 from typing import Optional
-from fastapi import APIRouter, UploadFile, File, Form, Request, HTTPException
+
+from fastapi import APIRouter, File, Form, HTTPException, Request, UploadFile
 from starlette.concurrency import run_in_threadpool
 
-from src.modules.career.scorer.config import MAX_TEXT_LENGTH, MAX_JD_LENGTH
-from src.modules.career.scorer.services.model_manager import model_manager
-from src.modules.career.scorer.services.ats_scorer import ATSScorer
+from src.modules.career.scorer.config import MAX_JD_LENGTH, MAX_TEXT_LENGTH
 from src.modules.career.scorer.services.analytics import track_analysis
-from src.modules.career.scorer.rate_limiter import limiter, rate_limiting_enabled
-from src.modules.career.scorer.utils.text_processing import (
-    allowed_file,
-    read_upload_bytes,
-    extract_text_from_bytes,
-)
+from src.modules.career.scorer.services.ats_scorer import ATSScorer
+from src.modules.career.scorer.services.model_manager import model_manager
 from src.modules.career.scorer.utils.keyword_extractor import extract_keywords
 from src.modules.career.scorer.utils.skill_extractor import extract_skills, get_all_skills_flat
+from src.modules.career.scorer.utils.text_processing import (
+    allowed_file,
+    extract_text_from_bytes,
+    read_upload_bytes,
+)
 
 logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
 
-def _calculate_ats(resume_text, jd_text, jd_title, mode, required_years,
-                   required_education, resume_skills, jd_keywords):
+def _calculate_ats(
+    resume_text, jd_text, jd_title, mode, required_years, required_education, resume_skills, jd_keywords
+):
     """CPU-bound ATS calculation, run via threadpool."""
     semantic_similarity = None
-    if mode == 'deep' and model_manager.embed_model:
+    if mode == "deep" and model_manager.embed_model:
         try:
             from sentence_transformers import util
 
-            resume_embedding = model_manager.embed_model.encode(
-                resume_text[:MAX_TEXT_LENGTH], convert_to_tensor=True
-            )
-            jd_embedding = model_manager.embed_model.encode(
-                jd_text[:MAX_TEXT_LENGTH], convert_to_tensor=True
-            )
+            resume_embedding = model_manager.embed_model.encode(resume_text[:MAX_TEXT_LENGTH], convert_to_tensor=True)
+            jd_embedding = model_manager.embed_model.encode(jd_text[:MAX_TEXT_LENGTH], convert_to_tensor=True)
             semantic_similarity = float(util.cos_sim(resume_embedding, jd_embedding)[0][0])
         except Exception as e:
             logger.warning(f"Semantic similarity calculation failed: {e}")
@@ -72,27 +69,26 @@ async def calculate_ats_score(
     """Calculate ATS score with detailed breakdown"""
     try:
         if not model_manager.is_loaded():
-            raise HTTPException(status_code=503, detail='System is still initializing. Please try again.')
+            raise HTTPException(status_code=503, detail="System is still initializing. Please try again.")
 
         jd_text = jd_text.strip()
         jd_title = jd_title.strip()
         mode = mode.lower()
-        if mode not in ('quick', 'deep'):
-            mode = 'deep'
+        if mode not in ("quick", "deep"):
+            mode = "deep"
 
         if not jd_text:
-            raise HTTPException(status_code=400, detail='Please provide a job description')
+            raise HTTPException(status_code=400, detail="Please provide a job description")
         if len(jd_text) > MAX_JD_LENGTH:
             raise HTTPException(
-                status_code=400,
-                detail=f'Job description too long ({len(jd_text)} chars). Maximum is {MAX_JD_LENGTH}.'
+                status_code=400, detail=f"Job description too long ({len(jd_text)} chars). Maximum is {MAX_JD_LENGTH}."
             )
 
         if not resume or not resume.filename:
-            raise HTTPException(status_code=400, detail='Please upload a resume file')
+            raise HTTPException(status_code=400, detail="Please upload a resume file")
 
         if not allowed_file(resume.filename):
-            raise HTTPException(status_code=400, detail='Invalid file type. Only PDF and TXT files are allowed.')
+            raise HTTPException(status_code=400, detail="Invalid file type. Only PDF and TXT files are allowed.")
 
         # Read into memory (no disk I/O)
         file_bytes = await read_upload_bytes(resume)
@@ -106,33 +102,34 @@ async def calculate_ats_score(
         # Run CPU-bound scoring in thread pool
         ats_result = await run_in_threadpool(
             _calculate_ats,
-            resume_text, jd_text, jd_title, mode,
-            required_years, required_education,
-            resume_skills, jd_keywords,
+            resume_text,
+            jd_text,
+            jd_title,
+            mode,
+            required_years,
+            required_education,
+            resume_skills,
+            jd_keywords,
         )
 
-        track_analysis('ats_score', {
-            'ats_score': ats_result.get('ats_score', 0),
-            'mode': mode,
-            'sub_scores': ats_result.get('sub_scores', {})
-        })
+        track_analysis(
+            "ats_score",
+            {"ats_score": ats_result.get("ats_score", 0), "mode": mode, "sub_scores": ats_result.get("sub_scores", {})},
+        )
 
-        return {'success': True, **ats_result}
+        return {"success": True, **ats_result}
 
     except HTTPException:
         raise
     except ValueError as e:
         logger.warning(f"Validation error in ATS score: {e}")
-        raise HTTPException(status_code=400, detail=str(e))
+        raise HTTPException(status_code=400, detail=str(e)) from e
     except (OSError, IOError) as e:
         logger.error(f"File processing error: {e}")
         raise HTTPException(
-            status_code=422,
-            detail='Could not read the uploaded file. It may be corrupted or in an unsupported format.'
-        )
+            status_code=422, detail="Could not read the uploaded file. It may be corrupted or in an unsupported format."
+        ) from e
     except Exception as e:
         logger.error(f"ATS Score Error: {e}")
         logger.error(traceback.format_exc())
-        raise HTTPException(status_code=500, detail='Failed to calculate ATS score. Please try again.')
-
-
+        raise HTTPException(status_code=500, detail="Failed to calculate ATS score. Please try again.") from e

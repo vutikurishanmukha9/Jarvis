@@ -1,27 +1,29 @@
 import asyncio
-import uuid
+import json
 import logging
 import os
-import json
-from datetime import datetime
+import uuid
 from concurrent.futures import ThreadPoolExecutor
-from typing import Dict, Optional, Any
-from .schemas import JobStatus, JobResponse
+from datetime import datetime
+from typing import Any, Dict, Optional
 
 from ..multimodal_system import MultimodalAI
+from .schemas import JobResponse, JobStatus
 
 logger = logging.getLogger(__name__)
+
 
 class JobManager:
     """
     Manages asynchronous analysis jobs.
     Uses a thread pool to run the CPU/GPU intensive tasks without blocking the async event loop.
     """
+
     def __init__(self, model_system: MultimodalAI, batch_size: int = 4, max_latency: float = 0.5):
         self.system = model_system
         self.jobs: Dict[str, Dict[str, Any]] = {}
-        self.executor = ThreadPoolExecutor(max_workers=1) # Single worker for batch processing (thread safe)
-        
+        self.executor = ThreadPoolExecutor(max_workers=1)  # Single worker for batch processing (thread safe)
+
         # Batching configuration
         self.batch_size = batch_size
         self.max_latency = max_latency
@@ -57,7 +59,7 @@ class JobManager:
             "created_at": datetime.now(),
             "completed_at": None,
             "error": None,
-            "result": None
+            "result": None,
         }
         return job_id
 
@@ -83,21 +85,16 @@ class JobManager:
             created_at=job["created_at"],
             completed_at=job["completed_at"],
             error=job["error"],
-            result=job["result"]
+            result=job["result"],
         )
 
     async def submit_job(self, image_path: str, question: str, config: Optional[Dict[str, Any]] = None) -> str:
         """Submit a job for processing via the batch queue."""
         job_id = self.create_job()
-        
+
         # Add to queue
-        await self.queue.put({
-            'job_id': job_id,
-            'image_path': image_path,
-            'question': question,
-            'config': config
-        })
-        
+        await self.queue.put({"job_id": job_id, "image_path": image_path, "question": question, "config": config})
+
         return job_id
 
     async def _batch_loop(self):
@@ -109,31 +106,31 @@ class JobManager:
                 # 1. Wait for first item (blocking)
                 item = await self.queue.get()
                 batch.append(item)
-                
+
                 # 2. Try to fill batch within max_latency
                 deadline = asyncio.get_event_loop().time() + self.max_latency
-                
+
                 while len(batch) < self.batch_size:
                     timeout = deadline - asyncio.get_event_loop().time()
                     if timeout <= 0:
                         break
-                        
+
                     try:
                         # Non-blocking peek/get with timeout
                         item = await asyncio.wait_for(self.queue.get(), timeout=timeout)
                         batch.append(item)
                     except asyncio.TimeoutError:
                         break
-                
+
                 # 3. Process the batch
                 if batch:
                     await self._process_batch(batch)
-                    
+
             except asyncio.CancelledError:
                 break
             except Exception as e:
                 logger.error(f"Error in batch loop: {e}")
-                await asyncio.sleep(1) # Prevent tight loop on error
+                await asyncio.sleep(1)  # Prevent tight loop on error
 
     async def _process_batch(self, batch: list):
         """Process queued jobs, grouping only requests with equivalent configuration."""
@@ -158,7 +155,7 @@ class JobManager:
                 )
                 if len(results) != len(group):
                     raise RuntimeError("Vision backend returned an unexpected result count.")
-                for item, result in zip(group, results):
+                for item, result in zip(group, results, strict=True):
                     job = self.jobs[item["job_id"]]
                     if result.get("error"):
                         job["status"] = JobStatus.FAILED

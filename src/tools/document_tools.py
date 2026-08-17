@@ -8,31 +8,35 @@ import io
 import json
 import logging
 from pathlib import Path
-from typing import List, Dict, Any, Tuple, Optional
+from typing import Any, Dict, List, Optional, Tuple
 
 import pandas as pd
-from PyPDF2 import PdfReader
-from langchain_text_splitters import RecursiveCharacterTextSplitter
-from langchain_community.vectorstores import FAISS
 from langchain_community.embeddings import HuggingFaceEmbeddings
+from langchain_community.vectorstores import FAISS
+from langchain_openai import OpenAIEmbeddings
+from langchain_text_splitters import RecursiveCharacterTextSplitter
+from PyPDF2 import PdfReader
+
 try:
-    from langchain_core.tools import create_retriever_tool, BaseTool
+    from langchain_core.tools import BaseTool, create_retriever_tool
 except ImportError:
-    from langchain.tools.retriever import create_retriever_tool
+    from langchain.tools.retriever import create_retriever_tool  # type: ignore[no-redef]
     from langchain_core.tools import BaseTool
 
 logger = logging.getLogger(__name__)
 
+
 def get_files_hash(uploaded_files: List[Any]) -> str:
-    """Generate a combined MD5 hash of all uploaded files for caching."""
-    hasher = hashlib.md5()
+    """Generate a combined SHA-256 hash of all uploaded files for caching."""
+    hasher = hashlib.sha256()
     for file in uploaded_files:
         content = file.getvalue() if hasattr(file, "getvalue") else file.read()
-        hasher.update(file.name.encode('utf-8'))
+        hasher.update(file.name.encode("utf-8"))
         hasher.update(content)
         if hasattr(file, "seek"):
             file.seek(0)
     return hasher.hexdigest()
+
 
 def extract_text_from_file(file: Any) -> Tuple[str, Dict[str, Any]]:
     """
@@ -46,7 +50,7 @@ def extract_text_from_file(file: Any) -> Tuple[str, Dict[str, Any]]:
 
     try:
         content_bytes = file.getvalue()
-        
+
         # 1. PDF
         if suffix == ".pdf":
             pdf_reader = PdfReader(io.BytesIO(content_bytes))
@@ -63,6 +67,7 @@ def extract_text_from_file(file: Any) -> Tuple[str, Dict[str, Any]]:
         elif suffix == ".docx":
             try:
                 import docx
+
                 doc = docx.Document(io.BytesIO(content_bytes))
                 paragraphs = [p.text for p in doc.paragraphs if p.text.strip()]
                 metadata["paragraphs"] = len(paragraphs)
@@ -79,8 +84,8 @@ def extract_text_from_file(file: Any) -> Tuple[str, Dict[str, Any]]:
                 summary_str = f"=== CSV Dataset: {file_name} ===\nShape: {df.shape[0]} rows x {df.shape[1]} columns\n"
                 summary_str += f"Columns: {', '.join(df.columns)}\n\nFirst 25 Rows:\n{df.head(25).to_markdown(index=False)}\n\nStatistical Summary:\n{df.describe(include='all').to_string()}"
                 text = summary_str
-            except Exception as e:
-                text = content_bytes.decode('utf-8', errors='ignore')
+            except Exception:
+                text = content_bytes.decode("utf-8", errors="ignore")
 
         # 4. Excel (XLSX, XLS)
         elif suffix in [".xlsx", ".xls"]:
@@ -90,19 +95,21 @@ def extract_text_from_file(file: Any) -> Tuple[str, Dict[str, Any]]:
                 sheets_text = [f"=== Excel Workbook: {file_name} ==="]
                 for sheet in xls.sheet_names:
                     df = pd.read_excel(xls, sheet_name=sheet)
-                    sheets_text.append(f"--- Sheet: {sheet} ({df.shape[0]} rows x {df.shape[1]} cols) ---\n{df.head(20).to_markdown(index=False)}")
+                    sheets_text.append(
+                        f"--- Sheet: {sheet} ({df.shape[0]} rows x {df.shape[1]} cols) ---\n{df.head(20).to_markdown(index=False)}"
+                    )
                 text = "\n\n".join(sheets_text)
             except Exception as e:
                 text = f"Error reading excel: {str(e)}"
 
         # 5. JSON
         elif suffix == ".json":
-            data = json.loads(content_bytes.decode('utf-8', errors='ignore'))
+            data = json.loads(content_bytes.decode("utf-8", errors="ignore"))
             text = f"=== JSON Document: {file_name} ===\n" + json.dumps(data, indent=2)
 
         # 6. TXT, Markdown, Python, Code
         else:
-            decoded = content_bytes.decode('utf-8', errors='ignore')
+            decoded = content_bytes.decode("utf-8", errors="ignore")
             text = f"=== Document: {file_name} ===\n{decoded}"
 
     except Exception as e:
@@ -111,11 +118,9 @@ def extract_text_from_file(file: Any) -> Tuple[str, Dict[str, Any]]:
 
     return text, metadata
 
+
 def process_documents_and_build_vector_store(
-    uploaded_files: List[Any],
-    api_provider: str = "OpenRouter",
-    chunk_size: int = 1000,
-    chunk_overlap: int = 150
+    uploaded_files: List[Any], api_provider: str = "OpenRouter", chunk_size: int = 1000, chunk_overlap: int = 150
 ) -> Tuple[Optional[FAISS], List[Dict[str, Any]], str]:
     """
     Process all uploaded document files, extract text, split into chunks,
@@ -126,7 +131,7 @@ def process_documents_and_build_vector_store(
 
     all_texts = []
     file_summaries = []
-    
+
     for file in uploaded_files:
         doc_text, meta = extract_text_from_file(file)
         if doc_text.strip():
@@ -136,14 +141,11 @@ def process_documents_and_build_vector_store(
     if not all_texts:
         return None, file_summaries, "No readable text could be extracted from uploaded files."
 
-    combined_text = "\n\n" + "="*50 + "\n\n".join(all_texts)
+    combined_text = "\n\n" + "=" * 50 + "\n\n".join(all_texts)
 
     # Chunking
     text_splitter = RecursiveCharacterTextSplitter(
-        separators=["\n\n", "\n", " ", ""],
-        chunk_size=chunk_size,
-        chunk_overlap=chunk_overlap,
-        length_function=len
+        separators=["\n\n", "\n", " ", ""], chunk_size=chunk_size, chunk_overlap=chunk_overlap, length_function=len
     )
     chunks = text_splitter.split_text(combined_text)
     logger.info(f"Split documents into {len(chunks)} chunks.")
@@ -151,15 +153,20 @@ def process_documents_and_build_vector_store(
     # Embeddings
     try:
         if api_provider == "OpenAI":
-            embeddings = OpenAIEmbeddings()
+            embeddings: Any = OpenAIEmbeddings()
         else:
             embeddings = HuggingFaceEmbeddings(model_name="all-MiniLM-L6-v2")
 
         vector_store = FAISS.from_texts(chunks, embeddings)
-        return vector_store, file_summaries, f"Successfully processed {len(uploaded_files)} file(s) into {len(chunks)} searchable vectors."
+        return (
+            vector_store,
+            file_summaries,
+            f"Successfully processed {len(uploaded_files)} file(s) into {len(chunks)} searchable vectors.",
+        )
     except Exception as e:
         logger.error(f"Vector store creation error: {str(e)}", exc_info=True)
         return None, file_summaries, f"Embedding creation failed: {str(e)}"
+
 
 def create_document_retriever_tool(vector_store: FAISS, top_k: int = 4) -> BaseTool:
     """Build a LangChain retriever tool from the FAISS vector store."""
@@ -167,5 +174,5 @@ def create_document_retriever_tool(vector_store: FAISS, top_k: int = 4) -> BaseT
     return create_retriever_tool(
         retriever,
         "document_search",
-        "Searches and retrieves the most relevant excerpts, tables, and sections from all uploaded files (PDF, Word, Excel, CSV, text)."
+        "Searches and retrieves the most relevant excerpts, tables, and sections from all uploaded files (PDF, Word, Excel, CSV, text).",
     )

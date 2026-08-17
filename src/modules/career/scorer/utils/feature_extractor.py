@@ -1,4 +1,4 @@
-﻿"""
+"""
 Feature Extraction Utilities for AI Resume Analyzer
 
 Extracts experience years, education level, seniority level,
@@ -6,8 +6,8 @@ and combined resume features for salary prediction.
 """
 
 import re
-from typing import Dict, Any
 from datetime import datetime
+from typing import Any, Dict
 
 from src.modules.career.scorer.utils.skill_extractor import extract_skills, get_all_skills_flat
 
@@ -15,9 +15,18 @@ from src.modules.career.scorer.utils.skill_extractor import extract_skills, get_
 def _parse_month(month_str: str) -> int:
     """Convert a month abbreviation to its 1-based number."""
     month_map = {
-        'jan': 1, 'feb': 2, 'mar': 3, 'apr': 4,
-        'may': 5, 'jun': 6, 'jul': 7, 'aug': 8,
-        'sep': 9, 'oct': 10, 'nov': 11, 'dec': 12,
+        "jan": 1,
+        "feb": 2,
+        "mar": 3,
+        "apr": 4,
+        "may": 5,
+        "jun": 6,
+        "jul": 7,
+        "aug": 8,
+        "sep": 9,
+        "oct": 10,
+        "nov": 11,
+        "dec": 12,
     }
     return month_map.get(month_str[:3].lower(), 1)
 
@@ -30,27 +39,38 @@ def _extract_experience_section(text: str) -> str:
     """
     # Common section headers for experience
     exp_headers = [
-        r'(?:professional\s+)?experience',
-        r'work\s+(?:experience|history)',
-        r'employment\s+history',
-        r'career\s+(?:history|summary)',
-        r'internship(?:s)?',
+        r"(?:professional\s+)?experience",
+        r"work\s+(?:experience|history)",
+        r"employment\s+history",
+        r"career\s+(?:history|summary)",
+        r"internship(?:s)?",
     ]
     # Section headers that typically follow experience
     next_headers = [
-        r'education', r'skills', r'certifications?', r'projects?',
-        r'awards?', r'publications?', r'interests?', r'hobbies',
-        r'references?', r'activities', r'achievements?', r'summary',
-        r'objective', r'languages?', r'volunteer',
+        r"education",
+        r"skills",
+        r"certifications?",
+        r"projects?",
+        r"awards?",
+        r"publications?",
+        r"interests?",
+        r"hobbies",
+        r"references?",
+        r"activities",
+        r"achievements?",
+        r"summary",
+        r"objective",
+        r"languages?",
+        r"volunteer",
     ]
 
     text_lower = text.lower()
 
     # Try multiple matching strategies (strict → relaxed)
     patterns = [
-        r'(?:^|\n)\s*(?:' + '|'.join(exp_headers) + r')\s*\n',
-        r'(?:^|\n)\s*(?:' + '|'.join(exp_headers) + r')\s*(?:\n|.)',
-        r'\b(?:' + '|'.join(exp_headers) + r')\b',
+        r"(?:^|\n)\s*(?:" + "|".join(exp_headers) + r")\s*\n",
+        r"(?:^|\n)\s*(?:" + "|".join(exp_headers) + r")\s*(?:\n|.)",
+        r"\b(?:" + "|".join(exp_headers) + r")\b",
     ]
 
     exp_match = None
@@ -64,8 +84,8 @@ def _extract_experience_section(text: str) -> str:
 
         # Find the next section header after experience
         next_patterns = [
-            r'(?:^|\n)\s*(?:' + '|'.join(next_headers) + r')\s*(?:\n|$)',
-            r'\b(?:' + '|'.join(next_headers) + r')\s*(?:\n|$)',
+            r"(?:^|\n)\s*(?:" + "|".join(next_headers) + r")\s*(?:\n|$)",
+            r"\b(?:" + "|".join(next_headers) + r")\s*(?:\n|$)",
         ]
         next_match = None
         for np in next_patterns:
@@ -98,11 +118,11 @@ def extract_years_of_experience(text: str) -> float:
     explicit_years: list[float] = []
 
     # "X years of experience" / "X+ years"
-    for m in re.finditer(r'(\d+)\+?\s*years?\s*(?:of)?\s*(?:experience|exp|expertise)', text_lower):
+    for m in re.finditer(r"(\d+)\+?\s*years?\s*(?:of)?\s*(?:experience|exp|expertise)", text_lower):
         explicit_years.append(float(m.group(1)))
 
     # "X-Y years of experience" → take the higher number
-    for m in re.finditer(r'(\d+)\s*[-–]\s*(\d+)\s*years?\s*(?:of)?\s*(?:experience|exp)', text_lower):
+    for m in re.finditer(r"(\d+)\s*[-–]\s*(\d+)\s*years?\s*(?:of)?\s*(?:experience|exp)", text_lower):
         explicit_years.append(float(m.group(2)))
 
     if explicit_years:
@@ -113,12 +133,12 @@ def extract_years_of_experience(text: str) -> float:
     exp_text = _extract_experience_section(text).lower()
 
     month_range_pattern = (
-        r'(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*\.?\s*'
-        r'((?:19|20)\d{2})\s*'
-        r'[-–—]+\s*'
-        r'(?:(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*\.?\s*'
-        r'((?:19|20)\d{2})|'
-        r'(present|current|till\s*date|to\s*date|ongoing))'
+        r"(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*\.?\s*"
+        r"((?:19|20)\d{2})\s*"
+        r"[-–—]+\s*"
+        r"(?:(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*\.?\s*"
+        r"((?:19|20)\d{2})|"
+        r"(present|current|till\s*date|to\s*date|ongoing))"
     )
     total_months = 0
     range_matches = list(re.finditer(month_range_pattern, exp_text))
@@ -144,9 +164,9 @@ def extract_years_of_experience(text: str) -> float:
             return round(total_months / 12, 1)
 
     # ── 3. Year-only fallback ──────────────────────────────────────
-    year_pattern = r'\b((?:19|20)\d{2})\b'
+    year_pattern = r"\b((?:19|20)\d{2})\b"
     year_strs = re.findall(year_pattern, exp_text)
-    if re.search(r'\b(present|current|till\s*date|to\s*date|ongoing)\b', exp_text):
+    if re.search(r"\b(present|current|till\s*date|to\s*date|ongoing)\b", exp_text):
         year_strs.append(str(current_year))
 
     if len(year_strs) >= 2:
@@ -162,26 +182,28 @@ def extract_education_level(text: str) -> int:
     """
     Extract education level from resume.
     Returns: 0=Unknown, 1=Diploma, 2=Bachelor's, 3=Master's, 4=PhD
-    
+
     Delegates to ats_helpers.detect_education_level() for single source of truth.
     """
     from src.modules.career.scorer.services.ats_helpers import detect_education_level
+
     result = detect_education_level(text)
-    return result.get('level_score', 0)
+    return result.get("level_score", 0)
 
 
 def extract_seniority_level(text: str) -> int:
     """
     Extract job seniority level from resume.
     Returns: 0=Entry, 1=Mid, 2=Senior, 3=Lead/Principal
-    
+
     Delegates to ats_helpers.detect_seniority_level() for single source of truth.
     """
     from src.modules.career.scorer.services.ats_helpers import detect_seniority_level
+
     result = detect_seniority_level(text)
-    level = result.get('level', 'unknown')
+    level = result.get("level", "unknown")
     # Map level name to int
-    level_map = {'entry': 0, 'mid': 1, 'senior': 2, 'lead': 3}
+    level_map = {"entry": 0, "mid": 1, "senior": 2, "lead": 3}
     return level_map.get(level, 0)  # Default entry-level, not mid (#17)
 
 
@@ -191,31 +213,28 @@ def extract_resume_features(resume_text: str) -> Dict[str, Any]:
     Returns a dictionary with features and their values.
     """
     features = {}
-    
+
     # Extract years of experience
-    features['years_experience'] = extract_years_of_experience(resume_text)
-    
+    features["years_experience"] = extract_years_of_experience(resume_text)
+
     # Extract education level
-    features['education_level'] = extract_education_level(resume_text)
-    
+    features["education_level"] = extract_education_level(resume_text)
+
     # Extract seniority level
-    features['seniority_level'] = extract_seniority_level(resume_text)
-    
+    features["seniority_level"] = extract_seniority_level(resume_text)
+
     # Extract skills count
     skills_categorized = extract_skills(resume_text)
     skills_flat = get_all_skills_flat(skills_categorized)
-    features['skills_count'] = len(skills_flat)
-    
+    features["skills_count"] = len(skills_flat)
+
     # Calculate feature completeness for confidence score
     completeness_factors = [
-        features['years_experience'] > 0,
-        features['education_level'] > 0,
-        features['seniority_level'] > 0,
-        features['skills_count'] > 0
+        features["years_experience"] > 0,
+        features["education_level"] > 0,
+        features["seniority_level"] > 0,
+        features["skills_count"] > 0,
     ]
-    features['completeness'] = sum(completeness_factors) / len(completeness_factors)
-    
+    features["completeness"] = sum(completeness_factors) / len(completeness_factors)
+
     return features
-
-
-

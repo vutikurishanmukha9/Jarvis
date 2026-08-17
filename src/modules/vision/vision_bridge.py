@@ -6,14 +6,13 @@ OCR text extraction, color analysis, and image metrics) into Jarvis.
 
 import io
 import logging
-import os
 import sys
 from pathlib import Path
-from typing import Dict, Any, List, Optional, Tuple
+from typing import Any, Dict, List, Optional, Tuple
 
 import numpy as np
+from langchain_core.tools import BaseTool, tool
 from PIL import Image
-from langchain_core.tools import tool, BaseTool
 
 logger = logging.getLogger(__name__)
 
@@ -26,12 +25,14 @@ if str(PROJECT_ROOT) not in sys.path:
 _ACTIVE_IMAGES: Dict[str, Dict[str, Any]] = {}
 _ANNOTATED_IMAGE_BUFFER: List[Tuple[str, Image.Image]] = []
 
+
 def get_and_clear_annotated_images() -> List[Tuple[str, Image.Image]]:
     """Retrieve and clear annotated images buffer for UI rendering."""
     global _ANNOTATED_IMAGE_BUFFER
     imgs = list(_ANNOTATED_IMAGE_BUFFER)
     _ANNOTATED_IMAGE_BUFFER.clear()
     return imgs
+
 
 def register_uploaded_image(file: Any) -> Dict[str, Any]:
     """Register and preprocess an uploaded image file."""
@@ -45,6 +46,7 @@ def register_uploaded_image(file: Any) -> Dict[str, Any]:
         img_np = np.array(pil_img)
         # Convert RGB to BGR for OpenCV
         import cv2
+
         img_bgr = cv2.cvtColor(img_np, cv2.COLOR_RGB2BGR)
 
         _ACTIVE_IMAGES[filename] = {
@@ -52,7 +54,7 @@ def register_uploaded_image(file: Any) -> Dict[str, Any]:
             "bgr": img_bgr,
             "rgb": img_np,
             "size": pil_img.size,
-            "format": image_format
+            "format": image_format,
         }
         logger.info(f"Registered active image: {filename} ({pil_img.size})")
         return {"status": "success", "filename": filename, "dimensions": pil_img.size}
@@ -60,10 +62,12 @@ def register_uploaded_image(file: Any) -> Dict[str, Any]:
         logger.error(f"Failed to register image {filename}: {str(e)}", exc_info=True)
         return {"status": "error", "filename": filename, "error": str(e)}
 
+
 def clear_active_images():
     """Clear all registered images."""
     global _ACTIVE_IMAGES
     _ACTIVE_IMAGES.clear()
+
 
 def analyze_image_deep(filename: Optional[str] = None) -> Dict[str, Any]:
     """
@@ -88,33 +92,39 @@ def analyze_image_deep(filename: Optional[str] = None) -> Dict[str, Any]:
         "objects": [],
         "text_ocr": "",
         "colors": [],
-        "quality": {}
+        "quality": {},
     }
 
     try:
         # 1. YOLOv8 Object Detection
         try:
-            from ultralytics import YOLO
             import cv2
+            from ultralytics import YOLO
+
             model = YOLO("yolov8n.pt")
             results = model(bgr_img, conf=0.35, verbose=False)[0]
-            
+
             annotated_bgr = bgr_img.copy()
             for box in results.boxes:
                 x1, y1, x2, y2 = box.xyxy[0].cpu().numpy().astype(int)
                 conf = float(box.conf[0].cpu().numpy())
                 cls_id = int(box.cls[0].cpu().numpy())
                 class_name = model.names[cls_id]
-                
-                analysis_results["objects"].append({
-                    "object": class_name,
-                    "confidence": round(conf, 3),
-                    "box": [int(x1), int(y1), int(x2), int(y2)]
-                })
+
+                analysis_results["objects"].append(
+                    {"object": class_name, "confidence": round(conf, 3), "box": [int(x1), int(y1), int(x2), int(y2)]}
+                )
                 # Draw bounding box
                 cv2.rectangle(annotated_bgr, (x1, y1), (x2, y2), (0, 240, 255), 2)
-                cv2.putText(annotated_bgr, f"{class_name} {conf:.2f}", (x1, max(y1 - 8, 15)),
-                            cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 240, 255), 2)
+                cv2.putText(
+                    annotated_bgr,
+                    f"{class_name} {conf:.2f}",
+                    (x1, max(y1 - 8, 15)),
+                    cv2.FONT_HERSHEY_SIMPLEX,
+                    0.5,
+                    (0, 240, 255),
+                    2,
+                )
 
             # Save annotated image to buffer
             annotated_rgb = cv2.cvtColor(annotated_bgr, cv2.COLOR_BGR2RGB)
@@ -126,17 +136,19 @@ def analyze_image_deep(filename: Optional[str] = None) -> Dict[str, Any]:
 
         # 2. OCR Text Extraction
         try:
-            import pytesseract
             import cv2
+            import pytesseract
+
             gray = cv2.cvtColor(bgr_img, cv2.COLOR_BGR2GRAY)
             ocr_text = pytesseract.image_to_string(gray)
             analysis_results["text_ocr"] = ocr_text.strip()
-        except Exception as e:
+        except Exception:
             analysis_results["ocr_note"] = "Tesseract OCR not configured or no text detected."
 
         # 3. Dominant Color Extraction (K-Means)
         try:
             import cv2
+
             rgb_data = img_data["rgb"].reshape((-1, 3)).astype(np.float32)
             criteria = (cv2.TERM_CRITERIA_EPS + cv2.TERM_CRITERIA_MAX_ITER, 20, 1.0)
             _, labels, centers = cv2.kmeans(rgb_data, 4, None, criteria, 10, cv2.KMEANS_RANDOM_CENTERS)
@@ -152,6 +164,7 @@ def analyze_image_deep(filename: Optional[str] = None) -> Dict[str, Any]:
         # 4. Quality & Sharpness
         try:
             import cv2
+
             gray = cv2.cvtColor(bgr_img, cv2.COLOR_BGR2GRAY)
             brightness = float(np.mean(gray))
             contrast = float(np.std(gray))
@@ -160,7 +173,7 @@ def analyze_image_deep(filename: Optional[str] = None) -> Dict[str, Any]:
                 "brightness": round(brightness, 1),
                 "contrast": round(contrast, 1),
                 "sharpness_score": round(sharpness, 1),
-                "is_blurry": sharpness < 100.0
+                "is_blurry": sharpness < 100.0,
             }
         except Exception as e:
             logger.warning(f"Image quality stats error: {str(e)}")
@@ -170,6 +183,7 @@ def analyze_image_deep(filename: Optional[str] = None) -> Dict[str, Any]:
         analysis_results["error"] = str(e)
 
     return analysis_results
+
 
 @tool
 def analyze_uploaded_images(query: str = "Perform comprehensive vision analysis on uploaded images") -> str:
@@ -186,7 +200,7 @@ def analyze_uploaded_images(query: str = "Perform comprehensive vision analysis 
         data = analyze_image_deep(filename)
         out = f"=== Vision Analysis for {filename} ===\n"
         out += f"- Dimensions: {data.get('dimensions', 'N/A')}\n"
-        
+
         objects = data.get("objects", [])
         if objects:
             counts: Dict[str, int] = {}
@@ -200,20 +214,21 @@ def analyze_uploaded_images(query: str = "Perform comprehensive vision analysis 
 
         ocr_text = data.get("text_ocr", "")
         if ocr_text:
-            out += f"- Extracted OCR Text:\n\"\"\"\n{ocr_text}\n\"\"\"\n"
-        
+            out += f'- Extracted OCR Text:\n"""\n{ocr_text}\n"""\n'
+
         colors = data.get("colors", [])
         if colors:
             color_str = ", ".join([f"{c['hex']} ({c['percentage']}%)" for c in colors])
             out += f"- Dominant Palette: {color_str}\n"
-            
+
         quality = data.get("quality", {})
         if quality:
             out += f"- Image Quality: Sharpness {quality.get('sharpness_score')}, Brightness {quality.get('brightness')}, Blurry: {quality.get('is_blurry')}\n"
-            
+
         results.append(out)
 
     return "\n\n".join(results)
+
 
 def get_vision_tools() -> List[BaseTool]:
     """Retrieve vision intelligence tools."""

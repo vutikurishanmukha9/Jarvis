@@ -3,21 +3,21 @@ Tests for Vision Algorithms: Laplacian variance sharpness, blur classification, 
 """
 
 import io
+
 import numpy as np
 import pytest
 from PIL import Image
+
+from src.modules.vision.vision_bridge import analyze_image_deep, clear_active_images, register_uploaded_image
 from tests.conftest import MockUploadedFile
-from src.modules.vision.vision_bridge import (
-    register_uploaded_image,
-    clear_active_images,
-    analyze_image_deep
-)
+
 
 @pytest.fixture(autouse=True)
 def reset_images():
     clear_active_images()
     yield
     clear_active_images()
+
 
 def test_vision_deep_analysis_structure(sample_image_file):
     """Verify deep vision analysis returns dimensions, colors, and quality metrics."""
@@ -35,6 +35,7 @@ def test_vision_deep_analysis_structure(sample_image_file):
     assert "sharpness_score" in quality
     assert "is_blurry" in quality
 
+
 def test_vision_kmeans_color_percentages(sample_image_file):
     """Verify dominant color percentages sum approximately to 100%."""
     register_uploaded_image(sample_image_file)
@@ -47,6 +48,7 @@ def test_vision_kmeans_color_percentages(sample_image_file):
     for c in colors:
         assert c["hex"].startswith("#")
         assert len(c["hex"]) == 7
+
 
 def test_vision_quality_sharpness_calculation():
     """Verify sharp high-contrast image produces high sharpness score."""
@@ -65,6 +67,7 @@ def test_vision_quality_sharpness_calculation():
     quality = analysis["quality"]
     assert quality["sharpness_score"] > 500
     assert quality["is_blurry"] is False
+
 
 def test_vision_no_images_uploaded():
     """Verify analyze_image_deep returns clean error message when no images are active."""

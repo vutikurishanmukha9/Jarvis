@@ -6,15 +6,16 @@ SECURITY: URL fetching validates schemes, blocks private/internal IPs,
 limits response size, and restricts redirect chains.
 """
 
+import ipaddress
 import logging
 import socket
-import ipaddress
+from typing import List
 from urllib.parse import urlparse
+
 import requests
 from bs4 import BeautifulSoup
 from langchain_community.tools import DuckDuckGoSearchRun
-from langchain_core.tools import tool, BaseTool
-from typing import List
+from langchain_core.tools import BaseTool, tool
 
 logger = logging.getLogger(__name__)
 
@@ -25,15 +26,15 @@ ALLOWED_SCHEMES = {"http", "https"}
 
 # Private/internal IP ranges that must be blocked (SSRF protection)
 BLOCKED_IP_NETWORKS = [
-    ipaddress.ip_network("127.0.0.0/8"),       # Loopback
-    ipaddress.ip_network("10.0.0.0/8"),         # Private Class A
-    ipaddress.ip_network("172.16.0.0/12"),      # Private Class B
-    ipaddress.ip_network("192.168.0.0/16"),     # Private Class C
-    ipaddress.ip_network("169.254.0.0/16"),     # Link-local
-    ipaddress.ip_network("0.0.0.0/8"),          # Unspecified
-    ipaddress.ip_network("::1/128"),            # IPv6 loopback
-    ipaddress.ip_network("fc00::/7"),           # IPv6 private
-    ipaddress.ip_network("fe80::/10"),          # IPv6 link-local
+    ipaddress.ip_network("127.0.0.0/8"),  # Loopback
+    ipaddress.ip_network("10.0.0.0/8"),  # Private Class A
+    ipaddress.ip_network("172.16.0.0/12"),  # Private Class B
+    ipaddress.ip_network("192.168.0.0/16"),  # Private Class C
+    ipaddress.ip_network("169.254.0.0/16"),  # Link-local
+    ipaddress.ip_network("0.0.0.0/8"),  # Unspecified
+    ipaddress.ip_network("::1/128"),  # IPv6 loopback
+    ipaddress.ip_network("fc00::/7"),  # IPv6 private
+    ipaddress.ip_network("fe80::/10"),  # IPv6 link-local
 ]
 
 
@@ -49,10 +50,7 @@ def _validate_url(url: str) -> str:
 
     # 1. Scheme validation
     if parsed.scheme not in ALLOWED_SCHEMES:
-        return (
-            f"Blocked URL scheme '{parsed.scheme}://'. "
-            f"Only {', '.join(ALLOWED_SCHEMES)} are allowed."
-        )
+        return f"Blocked URL scheme '{parsed.scheme}://'. Only {', '.join(ALLOWED_SCHEMES)} are allowed."
 
     # 2. Hostname must exist
     hostname = parsed.hostname
@@ -62,7 +60,7 @@ def _validate_url(url: str) -> str:
     # 3. DNS resolution and private IP check
     try:
         addr_infos = socket.getaddrinfo(hostname, parsed.port or 80, proto=socket.IPPROTO_TCP)
-        for family, _, _, _, sockaddr in addr_infos:
+        for _family, _, _, _, sockaddr in addr_infos:
             ip = ipaddress.ip_address(sockaddr[0])
             for network in BLOCKED_IP_NETWORKS:
                 if ip in network:
@@ -120,6 +118,7 @@ def wikipedia_lookup(query: str) -> str:
     """
     try:
         import wikipedia
+
         # Search for page titles
         search_results = wikipedia.search(query, results=3)
         if not search_results:
@@ -137,6 +136,7 @@ def wikipedia_lookup(query: str) -> str:
     except Exception as e:
         logger.warning(f"Wikipedia lookup error: {str(e)}")
         return f"Wikipedia lookup error for '{query}': {str(e)}"
+
 
 @tool
 def read_webpage_content(url: str) -> str:
@@ -184,22 +184,27 @@ def read_webpage_content(url: str) -> str:
         for script in soup(["script", "style", "nav", "footer", "header", "aside"]):
             script.decompose()
 
-        title = soup.title.string.strip() if soup.title else url
-        paragraphs = [p.get_text().strip() for p in soup.find_all(["p", "h1", "h2", "h3", "li"]) if p.get_text().strip()]
+        title = soup.title.string.strip() if soup.title and soup.title.string else url
+        paragraphs = [
+            p.get_text().strip() for p in soup.find_all(["p", "h1", "h2", "h3", "li"]) if p.get_text().strip()
+        ]
 
-        content = "\n\n".join(paragraphs[:40])  # limit to top paragraphs
-        if not content:
-            content = soup.get_text(separator="\n", strip=True)[:3000]
+        page_content = "\n\n".join(paragraphs[:40])  # limit to top paragraphs
+        if not page_content:
+            page_content = soup.get_text(separator="\n", strip=True)[:3000]
 
-        return f"=== Web Page: {title} ===\nURL: {url}\n\n{content[:4000]}"
+        return f"=== Web Page: {title} ===\nURL: {url}\n\n{page_content[:4000]}"
     except Exception as e:
         logger.error(f"Error fetching URL {url}: {str(e)}")
         return f"Failed to retrieve web page from '{url}': {str(e)}"
 
+
 def get_web_tools() -> List[BaseTool]:
     """Retrieve the standard suite of web research tools."""
     return [
-        DuckDuckGoSearchRun(description="Search the web for up-to-date information, news, current events, and live data."),
+        DuckDuckGoSearchRun(
+            description="Search the web for up-to-date information, news, current events, and live data."
+        ),
         wikipedia_lookup,
-        read_webpage_content
+        read_webpage_content,
     ]

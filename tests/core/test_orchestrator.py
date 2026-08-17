@@ -2,28 +2,22 @@
 Tests for JarvisOrchestrator tool collection, prompt binding, and agent construction.
 """
 
-import pytest
 from src.core.orchestrator import JarvisOrchestrator
+
 
 def test_orchestrator_initialization_defaults():
     """Verify default initialization gathers tools and builds agent executor."""
     orchestrator = JarvisOrchestrator(
-        api_provider="OpenRouter",
-        api_key="mock_key_for_testing",
-        model_name="openai/gpt-4o",
-        persona="JARVIS Supreme"
+        api_provider="OpenRouter", api_key="mock_key_for_testing", model_name="openai/gpt-4o", persona="JARVIS Supreme"
     )
     assert orchestrator.llm is not None
     assert len(orchestrator.tools) >= 15
     assert orchestrator.agent_executor is not None
 
+
 def test_orchestrator_tool_aggregation_coverage():
     """Verify tools from all 6 subsystems are collected in orchestrator.tools."""
-    orchestrator = JarvisOrchestrator(
-        api_provider="OpenAI",
-        api_key="mock_key_for_testing",
-        model_name="gpt-4o"
-    )
+    orchestrator = JarvisOrchestrator(api_provider="OpenAI", api_key="mock_key_for_testing", model_name="gpt-4o")
     tool_names = [t.name for t in orchestrator.tools]
 
     # Verify presence of tools across all subsystems
@@ -44,6 +38,7 @@ def test_orchestrator_tool_aggregation_coverage():
     assert "preview_campaign_batch" in tool_names
     assert "dispatch_email_campaign" in tool_names
 
+
 def test_orchestrator_custom_document_tool_injection():
     """Verify custom document RAG retriever tool is included when provided."""
     from langchain_core.tools import tool
@@ -54,9 +49,7 @@ def test_orchestrator_custom_document_tool_injection():
         return "Retrieved doc chunk"
 
     orchestrator = JarvisOrchestrator(
-        api_provider="OpenRouter",
-        api_key="mock_key_for_testing",
-        document_tool=mock_doc_retriever
+        api_provider="OpenRouter", api_key="mock_key_for_testing", document_tool=mock_doc_retriever
     )
     tool_names = [t.name for t in orchestrator.tools]
     assert "mock_doc_retriever" in tool_names

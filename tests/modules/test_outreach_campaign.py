@@ -2,8 +2,8 @@
 Tests for CampaignManager: CSV parsing, header normalization, dynamic template tags, and sequences.
 """
 
-import pytest
 from src.modules.outreach.campaign_manager import CampaignManager
+
 
 def test_outreach_parse_recipients_csv():
     """Verify parsing CSV data and normalizing column headers."""
@@ -19,6 +19,7 @@ def test_outreach_parse_recipients_csv():
     assert records[0]["role"] == "Head of AI"
     assert records[0]["email"] == "elena@robotech.ai"
 
+
 def test_outreach_extract_template_tags():
     """Verify extracting dynamic placeholder tags from template string."""
     template = "Hi {firstName}, reaching out regarding {role} at {company}."
@@ -26,6 +27,7 @@ def test_outreach_extract_template_tags():
     assert "firstName" in tags
     assert "role" in tags
     assert "company" in tags
+
 
 def test_outreach_template_rendering_with_fallbacks():
     """Verify missing values are replaced with safe fallbacks."""
@@ -36,6 +38,7 @@ def test_outreach_template_rendering_with_fallbacks():
     assert "there" in rendered or "Hello" in rendered
     assert "{" not in rendered  # No unrendered braces
 
+
 def test_outreach_4_stage_sequence_cadence():
     """Verify 4-stage follow-up cadence structure."""
     seq = CampaignManager.build_multi_stage_sequence(
@@ -43,7 +46,7 @@ def test_outreach_4_stage_sequence_cadence():
         target_company="Stark Industries",
         candidate_name="Tony",
         key_skills="AI & Robotics",
-        key_achievement="built autonomous flight navigation"
+        key_achievement="built autonomous flight navigation",
     )
     assert len(seq) == 4
     stages = [s["stage"] for s in seq]
@@ -51,6 +54,7 @@ def test_outreach_4_stage_sequence_cadence():
     assert any("Day 4" in st for st in stages)
     assert any("Day 8" in st for st in stages)
     assert any("Day 14" in st for st in stages)
+
 
 def test_outreach_sample_recipients_csv_fallback():
     """Verify default sample CSV is available and well-formed."""

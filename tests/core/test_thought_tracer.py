@@ -2,9 +2,8 @@
 Tests for ThoughtStepTracer callback handling, tool tracking, and telemetry formatting.
 """
 
-import time
-import pytest
 from src.core.orchestrator import ThoughtStepTracer
+
 
 def test_thought_step_tracer_tool_lifecycle():
     """Verify tracer records tool start, end, and parameter inputs."""
@@ -27,6 +26,7 @@ def test_thought_step_tracer_tool_lifecycle():
     assert end_step["type"] == "tool_end"
     assert "topological qubit" in end_step["output"]
 
+
 def test_thought_step_tracer_error_interception():
     """Verify tracer records tool exceptions gracefully."""
     tracer = ThoughtStepTracer()
@@ -37,6 +37,7 @@ def test_thought_step_tracer_error_interception():
     err_step = tracer.steps[1]
     assert err_step["type"] == "tool_error"
     assert "undefined_library" in err_step["error"]
+
 
 def test_thought_step_tracer_output_truncation():
     """Verify that very long tool outputs are truncated to 800 chars in thought steps."""

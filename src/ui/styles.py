@@ -849,8 +849,8 @@ def render_apple_header(persona_name: str = "JARVIS Supreme", mode: str = "Direc
     """
     status_map = {
         "active": ("SYSTEM ACTIVE", ""),
-        "busy":   ("PROCESSING", "busy"),
-        "error":  ("ATTENTION NEEDED", "error"),
+        "busy": ("PROCESSING", "busy"),
+        "error": ("ATTENTION NEEDED", "error"),
     }
     label, css_class = status_map.get(status, status_map["active"])
 

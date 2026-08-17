@@ -2,20 +2,21 @@
 Tests for system configurations, providers, models, personas, and directory definitions.
 """
 
-import pytest
 from pathlib import Path
+
 from src.config import (
-    PROVIDERS,
+    ASSISTANT_DIR,
+    DEFAULT_ASSISTANT_NAME,
+    DEFAULT_USER_NAME,
+    OUTREACH_DIR,
     PERSONAS,
+    PROVIDERS,
+    SUPPORTED_ALL_EXTENSIONS,
     SUPPORTED_DOC_EXTENSIONS,
     SUPPORTED_IMAGE_EXTENSIONS,
-    SUPPORTED_ALL_EXTENSIONS,
     WORKSPACE_DIR,
-    ASSISTANT_DIR,
-    OUTREACH_DIR,
-    DEFAULT_ASSISTANT_NAME,
-    DEFAULT_USER_NAME
 )
+
 
 def test_provider_definitions():
     """Verify all supported AI providers have base URLs and default model lists."""
@@ -32,6 +33,7 @@ def test_provider_definitions():
     assert "gpt-4o" in openai_prov["default_models"]
     assert openai_prov["default_model"] == "gpt-4o"
 
+
 def test_system_personas_integrity():
     """Verify all 6 system personas contain prompt templates and taglines."""
     expected_personas = [
@@ -40,13 +42,14 @@ def test_system_personas_integrity():
         "Data & Vision Scientist",
         "Code Architect & Engineer",
         "Career & Talent Strategist",
-        "HR & Executive Outreach Specialist"
+        "HR & Executive Outreach Specialist",
     ]
     for persona_name in expected_personas:
         assert persona_name in PERSONAS, f"Missing persona: {persona_name}"
         persona = PERSONAS[persona_name]
         assert "tagline" in persona and len(persona["tagline"]) > 5
         assert "prompt" in persona and len(persona["prompt"]) > 50
+
 
 def test_system_directories_and_extensions():
     """Verify workspace/log paths exist and supported file extension whitelists are valid."""

@@ -7,12 +7,13 @@ This module provides the LLMProcessor class that handles:
 - Text generation based on image content
 """
 
-import torch
-from transformers import BlipProcessor, BlipForConditionalGeneration
-from PIL import Image
 import logging
-from typing import Optional, Union, List, Dict, Any
 import os
+from typing import Any, Dict, List, Optional, Union
+
+import torch
+from PIL import Image
+from transformers import BlipForConditionalGeneration, BlipProcessor
 
 # Set up logging
 logger = logging.getLogger(__name__)
@@ -28,8 +29,13 @@ class LLMProcessor:
     - Text generation based on visual content
     """
 
-    def __init__(self, model_id: str = "Salesforce/blip-image-captioning-base",
-                 device: str = "auto", torch_dtype: str = "auto"):
+    def __init__(
+        self,
+        model_id: str = "Salesforce/blip-image-captioning-base",
+        device: str = "auto",
+        torch_dtype: str = "auto",
+        model_revision: Optional[str] = None,
+    ):
         """
         Initialize the LLM processor with a BLIP model.
 
@@ -39,6 +45,7 @@ class LLMProcessor:
             torch_dtype (str): Torch data type ('auto', 'float16', 'float32')
         """
         self.model_id = model_id
+        self.model_revision = model_revision or os.getenv("JARVIS_BLIP_MODEL_REVISION", "main")
         self.device = self._setup_device(device)
         self.torch_dtype = self._setup_dtype(torch_dtype)
 
@@ -58,7 +65,7 @@ class LLMProcessor:
         if device == "auto":
             if torch.cuda.is_available():
                 return "cuda"
-            elif hasattr(torch.backends, 'mps') and torch.backends.mps.is_available():
+            elif hasattr(torch.backends, "mps") and torch.backends.mps.is_available():
                 return "mps"
             else:
                 return "cpu"
@@ -82,12 +89,13 @@ class LLMProcessor:
         """Load the BLIP model and processor."""
         try:
             logger.info(f"Loading BLIP processor from {self.model_id}...")
-            self.processor = BlipProcessor.from_pretrained(self.model_id)
+            self.processor = BlipProcessor.from_pretrained(self.model_id, revision=self.model_revision)
 
             logger.info(f"Loading BLIP model from {self.model_id}...")
             self.model = BlipForConditionalGeneration.from_pretrained(
                 self.model_id,
-                torch_dtype=self.torch_dtype
+                torch_dtype=self.torch_dtype,
+                revision=self.model_revision,
             )
 
             # Move model to specified device
@@ -103,11 +111,14 @@ class LLMProcessor:
             logger.error(f"Failed to load model {self.model_id}: {str(e)}")
             self.model_loaded = False
 
-    def caption_image(self, image: Union[str, Image.Image], 
-                     conditional_text: Optional[str] = None,
-                     max_length: int = 50,
-                     num_beams: int = 5,
-                     temperature: float = 1.0) -> Dict[str, Any]:
+    def caption_image(
+        self,
+        image: Union[str, Image.Image],
+        conditional_text: Optional[str] = None,
+        max_length: int = 50,
+        num_beams: int = 5,
+        temperature: float = 1.0,
+    ) -> Dict[str, Any]:
         """
         Generate caption for an image using BLIP model.
 
@@ -123,50 +134,33 @@ class LLMProcessor:
         """
         if not self.model_loaded:
             logger.error("Model not loaded")
-            return {
-                'caption': '',
-                'confidence': 0.0,
-                'error': 'Model not loaded'
-            }
+            return {"caption": "", "confidence": 0.0, "error": "Model not loaded"}
 
         try:
             # Load and prepare image
             if isinstance(image, str):
                 if not os.path.exists(image):
                     logger.error(f"Image file not found: {image}")
-                    return {
-                        'caption': '',
-                        'confidence': 0.0,
-                        'error': f'Image file not found: {image}'
-                    }
-                pil_image = Image.open(image).convert('RGB')
+                    return {"caption": "", "confidence": 0.0, "error": f"Image file not found: {image}"}
+                pil_image = Image.open(image).convert("RGB")
             elif isinstance(image, Image.Image):
-                pil_image = image.convert('RGB')
+                pil_image = image.convert("RGB")
             else:
                 logger.error("Invalid image type")
-                return {
-                    'caption': '',
-                    'confidence': 0.0,
-                    'error': 'Invalid image type'
-                }
+                return {"caption": "", "confidence": 0.0, "error": "Invalid image type"}
 
             # Process inputs
             if conditional_text:
                 # Conditional image captioning
-                inputs = self.processor(
-                    images=pil_image,
-                    text=conditional_text,
-                    return_tensors="pt"
-                ).to(self.device, dtype=self.torch_dtype)
+                inputs = self.processor(images=pil_image, text=conditional_text, return_tensors="pt").to(
+                    self.device, dtype=self.torch_dtype
+                )
 
                 caption_type = "conditional"
                 logger.info(f"Generating conditional caption with text: '{conditional_text}'")
             else:
                 # Unconditional image captioning
-                inputs = self.processor(
-                    images=pil_image,
-                    return_tensors="pt"
-                ).to(self.device, dtype=self.torch_dtype)
+                inputs = self.processor(images=pil_image, return_tensors="pt").to(self.device, dtype=self.torch_dtype)
 
                 caption_type = "unconditional"
                 logger.info("Generating unconditional caption")
@@ -182,11 +176,11 @@ class LLMProcessor:
                     early_stopping=True,
                     pad_token_id=self.processor.tokenizer.pad_token_id,
                     return_dict_in_generate=True,
-                    output_scores=True
+                    output_scores=True,
                 )
 
             # Decode the generated caption
-            sequences = output.sequences if hasattr(output, 'sequences') else output
+            sequences = output.sequences if hasattr(output, "sequences") else output
             caption = self.processor.decode(sequences[0], skip_special_tokens=True)
 
             # Calculate confidence based on generation quality metrics
@@ -201,17 +195,13 @@ class LLMProcessor:
                 confidence = 0.1
 
             result = {
-                'caption': caption,
-                'confidence': round(confidence, 3),
-                'caption_type': caption_type,
-                'conditional_text': conditional_text,
-                'generation_params': {
-                    'max_length': max_length,
-                    'num_beams': num_beams,
-                    'temperature': temperature
-                },
-                'word_count': len(caption.split()),
-                'character_count': len(caption)
+                "caption": caption,
+                "confidence": round(confidence, 3),
+                "caption_type": caption_type,
+                "conditional_text": conditional_text,
+                "generation_params": {"max_length": max_length, "num_beams": num_beams, "temperature": temperature},
+                "word_count": len(caption.split()),
+                "character_count": len(caption),
             }
 
             logger.info(f"Generated {caption_type} caption: '{caption}'")
@@ -219,16 +209,11 @@ class LLMProcessor:
 
         except Exception as e:
             logger.error(f"Error generating caption: {str(e)}")
-            return {
-                'caption': '',
-                'confidence': 0.0,
-                'error': str(e)
-            }
+            return {"caption": "", "confidence": 0.0, "error": str(e)}
 
-    def answer_question(self, caption: str, question: str,
-                       max_length: int = 100,
-                       num_beams: int = 5,
-                       temperature: float = 1.0) -> Dict[str, Any]:
+    def answer_question(
+        self, caption: str, question: str, max_length: int = 100, num_beams: int = 5, temperature: float = 1.0
+    ) -> Dict[str, Any]:
         """
         Answer a question based on image caption using text generation.
 
@@ -236,7 +221,7 @@ class LLMProcessor:
             caption (str): Image caption or description
             question (str): Question to answer
             max_length (int): Maximum length of generated answer
-            num_beams (int): Number of beams for beam search  
+            num_beams (int): Number of beams for beam search
             temperature (float): Sampling temperature for generation
 
         Returns:
@@ -244,11 +229,7 @@ class LLMProcessor:
         """
         if not self.model_loaded:
             logger.error("Model not loaded")
-            return {
-                'answer': '',
-                'confidence': 0.0,
-                'error': 'Model not loaded'
-            }
+            return {"answer": "", "confidence": 0.0, "error": "Model not loaded"}
 
         try:
             # Create a context prompt combining caption and question
@@ -256,24 +237,20 @@ class LLMProcessor:
 
             # Tokenize the input
             inputs = self.processor.tokenizer(
-                context,
-                return_tensors="pt",
-                padding=True,
-                truncation=True,
-                max_length=512
+                context, return_tensors="pt", padding=True, truncation=True, max_length=512
             ).to(self.device)
 
             # Generate answer
             with torch.no_grad():
                 output = self.model.generate(
-                    input_ids=inputs['input_ids'],
-                    attention_mask=inputs['attention_mask'],
-                    max_length=inputs['input_ids'].shape[1] + max_length,
+                    input_ids=inputs["input_ids"],
+                    attention_mask=inputs["attention_mask"],
+                    max_length=inputs["input_ids"].shape[1] + max_length,
                     num_beams=num_beams,
                     temperature=temperature,
                     do_sample=temperature > 0,
                     early_stopping=True,
-                    pad_token_id=self.processor.tokenizer.pad_token_id
+                    pad_token_id=self.processor.tokenizer.pad_token_id,
                 )
 
             # Decode the answer (remove the input context)
@@ -283,23 +260,19 @@ class LLMProcessor:
             if "Answer:" in full_response:
                 answer = full_response.split("Answer:")[-1].strip()
             else:
-                answer = full_response[len(context):].strip()
+                answer = full_response[len(context) :].strip()
 
             # Simple confidence estimation
             confidence = min(1.0, max(0.1, 1.0 - (len(answer.split()) / max_length)))
 
             result = {
-                'answer': answer,
-                'confidence': round(confidence, 3),
-                'question': question,
-                'context_caption': caption,
-                'generation_params': {
-                    'max_length': max_length,
-                    'num_beams': num_beams,
-                    'temperature': temperature
-                },
-                'word_count': len(answer.split()),
-                'character_count': len(answer)
+                "answer": answer,
+                "confidence": round(confidence, 3),
+                "question": question,
+                "context_caption": caption,
+                "generation_params": {"max_length": max_length, "num_beams": num_beams, "temperature": temperature},
+                "word_count": len(answer.split()),
+                "character_count": len(answer),
             }
 
             logger.info(f"Generated answer for question '{question}': '{answer}'")
@@ -307,15 +280,11 @@ class LLMProcessor:
 
         except Exception as e:
             logger.error(f"Error answering question: {str(e)}")
-            return {
-                'answer': '',
-                'confidence': 0.0,
-                'error': str(e)
-            }
+            return {"answer": "", "confidence": 0.0, "error": str(e)}
 
-    def batch_caption_images(self, images: List[Union[str, Image.Image]],
-                           conditional_texts: Optional[List[str]] = None,
-                           **generation_kwargs) -> List[Dict[str, Any]]:
+    def batch_caption_images(
+        self, images: List[Union[str, Image.Image]], conditional_texts: Optional[List[str]] = None, **generation_kwargs
+    ) -> List[Dict[str, Any]]:
         """
         Generate captions for multiple images in batch.
 
@@ -338,18 +307,14 @@ class LLMProcessor:
             conditional_texts = [None] * len(images)
         elif len(conditional_texts) != len(images):
             logger.warning("Conditional texts length doesn't match images length")
-            conditional_texts = conditional_texts[:len(images)] + [None] * (len(images) - len(conditional_texts))
+            conditional_texts = conditional_texts[: len(images)] + [None] * (len(images) - len(conditional_texts))
 
-        for i, (image, conditional_text) in enumerate(zip(images, conditional_texts)):
-            logger.info(f"Processing image {i+1}/{len(images)}")
+        for i, (image, conditional_text) in enumerate(zip(images, conditional_texts, strict=True)):
+            logger.info(f"Processing image {i + 1}/{len(images)}")
 
-            result = self.caption_image(
-                image=image,
-                conditional_text=conditional_text,
-                **generation_kwargs
-            )
+            result = self.caption_image(image=image, conditional_text=conditional_text, **generation_kwargs)
 
-            result['batch_index'] = i
+            result["batch_index"] = i
             results.append(result)
 
         logger.info(f"Completed batch captioning of {len(images)} images")
@@ -363,31 +328,29 @@ class LLMProcessor:
             Dict[str, Any]: Model information and configuration
         """
         if not self.model_loaded:
-            return {'error': 'Model not loaded'}
+            return {"error": "Model not loaded"}
 
         try:
             info = {
-                'model_id': self.model_id,
-                'device': str(self.device),
-                'torch_dtype': str(self.torch_dtype),
-                'model_loaded': self.model_loaded,
-                'num_parameters': sum(p.numel() for p in self.model.parameters()),
-                'trainable_parameters': sum(p.numel() for p in self.model.parameters() if p.requires_grad),
-                'model_size_mb': sum(p.numel() * p.element_size() for p in self.model.parameters()) / (1024 * 1024)
+                "model_id": self.model_id,
+                "device": str(self.device),
+                "torch_dtype": str(self.torch_dtype),
+                "model_loaded": self.model_loaded,
+                "num_parameters": sum(p.numel() for p in self.model.parameters()),
+                "trainable_parameters": sum(p.numel() for p in self.model.parameters() if p.requires_grad),
+                "model_size_mb": sum(p.numel() * p.element_size() for p in self.model.parameters()) / (1024 * 1024),
             }
 
             # Add tokenizer info
-            if hasattr(self.processor, 'tokenizer'):
-                info['vocab_size'] = self.processor.tokenizer.vocab_size
-                info['max_position_embeddings'] = getattr(
-                    self.processor.tokenizer, 'model_max_length', 'Unknown'
-                )
+            if hasattr(self.processor, "tokenizer"):
+                info["vocab_size"] = self.processor.tokenizer.vocab_size
+                info["max_position_embeddings"] = getattr(self.processor.tokenizer, "model_max_length", "Unknown")
 
             return info
 
         except Exception as e:
             logger.error(f"Error getting model info: {str(e)}")
-            return {'error': str(e)}
+            return {"error": str(e)}
 
     def cleanup(self) -> None:
         """Clean up resources and free memory."""

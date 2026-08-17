@@ -5,14 +5,13 @@ and campaign state management.
 """
 
 import io
-import re
-import csv
 import json
-import time
 import logging
+import re
 import threading
 from pathlib import Path
-from typing import List, Dict, Any, Optional
+from typing import Any, Dict, List, Optional
+
 import pandas as pd
 
 from ...config import OUTREACH_DIR
@@ -25,6 +24,7 @@ ENGINE_TEMPLATES_FILE = MODULE_DIR / "templates" / "campaign_templates.json"
 ENGINE_SAMPLE_CSV = MODULE_DIR / "data" / "sample_recipients_tech_recruiters.csv"
 ENGINE_ANALYTICS_FILE = MODULE_DIR / "data" / "outreach_analytics.json"
 _campaign_log_lock = threading.Lock()
+
 
 class CampaignManager:
     """Manages cold email outreach campaigns, recipient parsing, and multi-stage sequences."""
@@ -47,8 +47,8 @@ class CampaignManager:
             try:
                 with open(ENGINE_SAMPLE_CSV, "r", encoding="utf-8") as f:
                     return f.read()
-            except Exception:
-                pass
+            except Exception as exc:
+                logger.debug("Could not load sample recipients CSV: %s", exc)
         return (
             "email,firstName,company,role,department\n"
             "sarah.connor@techcorp.io,Sarah,TechCorp,VP of Engineering,AI Infrastructure\n"
@@ -63,8 +63,8 @@ class CampaignManager:
             try:
                 with open(ENGINE_ANALYTICS_FILE, "r", encoding="utf-8") as f:
                     return json.load(f)
-            except Exception:
-                pass
+            except Exception as exc:
+                logger.debug("Could not load outreach analytics file: %s", exc)
         return {}
 
     @staticmethod
@@ -84,19 +84,23 @@ class CampaignManager:
                 df = pd.read_csv(io.StringIO(source))
             except Exception:
                 # Line-by-line fallback
-                lines = [l.strip() for l in source.strip().splitlines() if l.strip()]
+                lines = [line.strip() for line in source.strip().splitlines() if line.strip()]
                 for line in lines:
                     if "@" in line:
                         parts = [p.strip() for p in line.split(",")]
-                        email = parts[0] if "@" in parts[0] else (parts[1] if len(parts) > 1 and "@" in parts[1] else "")
+                        email = (
+                            parts[0] if "@" in parts[0] else (parts[1] if len(parts) > 1 and "@" in parts[1] else "")
+                        )
                         name = parts[0] if email != parts[0] else ""
-                        records.append({
-                            "email": email,
-                            "firstName": name.split()[0] if name else "there",
-                            "name": name or "Colleague",
-                            "company": "your organization",
-                            "role": "Team Lead"
-                        })
+                        records.append(
+                            {
+                                "email": email,
+                                "firstName": name.split()[0] if name else "there",
+                                "name": name or "Colleague",
+                                "company": "your organization",
+                                "role": "Team Lead",
+                            }
+                        )
                 return records
         elif isinstance(source, bytes):
             try:
@@ -112,18 +116,18 @@ class CampaignManager:
             # Clean dataframe
             df = df.dropna(how="all").fillna("")
             raw_records = df.to_dict(orient="records")
-            
+
             for row in raw_records:
                 clean_row: Dict[str, Any] = {}
                 for k, v in row.items():
                     key_str = str(k).strip()
                     val_str = str(v).strip()
                     clean_row[key_str] = val_str
-                    
+
                     # Also normalize keys
-                    norm_k = re.sub(r'[^a-zA-Z0-9]', '', key_str)
+                    norm_k = re.sub(r"[^a-zA-Z0-9]", "", key_str)
                     norm_lower = norm_k.lower()
-                    
+
                     if "email" in norm_lower:
                         clean_row["email"] = val_str
                     elif "first" in norm_lower or norm_lower == "fname":
@@ -146,9 +150,11 @@ class CampaignManager:
                         if isinstance(val, str) and "@" in val and "." in val:
                             clean_row["email"] = val
                             break
-                
+
                 if not clean_row.get("firstName"):
-                    clean_row["firstName"] = clean_row.get("name", "there").split()[0] if clean_row.get("name") else "there"
+                    clean_row["firstName"] = (
+                        clean_row.get("name", "there").split()[0] if clean_row.get("name") else "there"
+                    )
                 if not clean_row.get("company"):
                     clean_row["company"] = "your organization"
                 if not clean_row.get("role"):
@@ -162,10 +168,12 @@ class CampaignManager:
     @staticmethod
     def extract_template_tags(template_text: str) -> List[str]:
         """Extract all {tag} placeholder variables from a template string."""
-        return list(set(re.findall(r'\{([a-zA-Z0-9_]+)\}', template_text)))
+        return list(set(re.findall(r"\{([a-zA-Z0-9_]+)\}", template_text)))
 
     @staticmethod
-    def render_template(template_str: str, recipient: Dict[str, Any], global_tags: Optional[Dict[str, Any]] = None) -> str:
+    def render_template(
+        template_str: str, recipient: Dict[str, Any], global_tags: Optional[Dict[str, Any]] = None
+    ) -> str:
         """
         Substitute {tag} placeholders with recipient-specific and global variables.
         Gracefully replaces unknown tags with neutral defaults.
@@ -190,11 +198,11 @@ class CampaignManager:
                 "candidatename": "Job Seeker",
                 "keyskills": "relevant domain skills",
                 "keyachievement": "delivered high-impact technical results",
-                "portfoliourl": ""
+                "portfoliourl": "",
             }
             return defaults.get(tag.lower(), f"[{tag}]")
 
-        return re.sub(r'\{([a-zA-Z0-9_]+)\}', replace_match, template_str)
+        return re.sub(r"\{([a-zA-Z0-9_]+)\}", replace_match, template_str)
 
     @staticmethod
     def build_multi_stage_sequence(
@@ -203,13 +211,15 @@ class CampaignManager:
         candidate_name: str,
         key_skills: str,
         key_achievement: str = "",
-        portfolio_url: str = ""
-    ) -> List[Dict[str, str]]:
+        portfolio_url: str = "",
+    ) -> List[Dict[str, Any]]:
         """
         Generate a high-converting 4-stage cold outreach sequence.
         """
-        achieve_text = key_achievement if key_achievement else "scaled distributed infrastructure and reduced latency by 35%"
-        
+        achieve_text = (
+            key_achievement if key_achievement else "scaled distributed infrastructure and reduced latency by 35%"
+        )
+
         sequence = [
             {
                 "stage": "Stage 1 — Initial Pitch (Day 1)",
@@ -221,7 +231,7 @@ class CampaignManager:
                     f"With my background in {key_skills}, where I recently {achieve_text}, I believe I could make an immediate contribution to your upcoming technical roadmap.\n\n"
                     f"Would you be open to a brief 10-minute conversation next Tuesday or Wednesday to explore if my background aligns with your current priorities?\n\n"
                     f"Best regards,\n{candidate_name}\n{portfolio_url}"
-                )
+                ),
             },
             {
                 "stage": "Stage 2 — Value-Add Case Study (Day 4)",
@@ -233,7 +243,7 @@ class CampaignManager:
                     f"In my past work, I tackled a similar challenge by streamlining core deployment pipelines and optimizing database throughput. I've documented some actionable architectural insights here: {portfolio_url or '[Portfolio Link]'}.\n\n"
                     f"Happy to share how these learnings could benefit {target_company} if you have 5 minutes this week.\n\n"
                     f"Best,\n{candidate_name}"
-                )
+                ),
             },
             {
                 "stage": "Stage 3 — Soft Nudge (Day 8)",
@@ -244,7 +254,7 @@ class CampaignManager:
                     f"I know how busy you must be managing priorities at {target_company}.\n\n"
                     f"Just wanted to check if hiring for the {target_role} position is still an active focus this quarter. I'd love to connect briefly whenever convenient.\n\n"
                     f"Best,\n{candidate_name}"
-                )
+                ),
             },
             {
                 "stage": "Stage 4 — Graceful Breakup (Day 14)",
@@ -255,8 +265,8 @@ class CampaignManager:
                     f"I assume timing might not be right currently for the {target_role} role at {target_company}, so I won't follow up further on this thread.\n\n"
                     f"If priorities shift down the road, please feel free to reach out anytime. Wishing you and {target_company} continued success!\n\n"
                     f"Warmly,\n{candidate_name}\n{portfolio_url}"
-                )
-            }
+                ),
+            },
         ]
         return sequence
 

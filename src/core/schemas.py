@@ -5,16 +5,18 @@ Provides strict type validation, field constraints, serialization, and schema en
 
 import re
 import time
-from typing import List, Dict, Any, Optional
-from pydantic import BaseModel, Field, field_validator, model_validator
+from typing import Any, Dict, List, Optional
 
+from pydantic import BaseModel, Field, field_validator, model_validator
 
 # ==============================================================================
 # 1. Autonomous Planning Schemas
 # ==============================================================================
 
+
 class SubTaskModel(BaseModel):
     """Schema for an individual autonomous subtask in an execution DAG."""
+
     id: str = Field(..., description="Unique identifier for the subtask (e.g., 'task_1')")
     title: str = Field(..., min_length=3, description="Concise human-readable title of the subtask")
     instruction: str = Field(..., min_length=5, description="Detailed instruction for the agent executor")
@@ -43,6 +45,7 @@ class SubTaskModel(BaseModel):
 
 class GoalPlanModel(BaseModel):
     """Schema for a decomposed autonomous mission plan with topological dependencies."""
+
     mission_title: str = Field(..., min_length=3, description="High-level title for the autonomous goal")
     mission_objective: str = Field(..., min_length=5, description="Comprehensive objective statement")
     estimated_steps: int = Field(default=1, ge=1, le=10, description="Estimated number of execution steps")
@@ -61,11 +64,15 @@ class GoalPlanModel(BaseModel):
 # 2. Long-Term Memory & User Profile Schemas
 # ==============================================================================
 
+
 class MemoryEntryModel(BaseModel):
     """Schema for a persistent memory fact with provenance and confidence."""
-    id: str = Field(default_factory=lambda: f"mem_{int(time.time()*1000)}", description="Unique memory ID")
+
+    id: str = Field(default_factory=lambda: f"mem_{int(time.time() * 1000)}", description="Unique memory ID")
     fact: str = Field(..., min_length=3, description="Fact or directive to remember")
-    category: str = Field(default="preference", description="Memory category: preference, project, personal, technical, system")
+    category: str = Field(
+        default="preference", description="Memory category: preference, project, personal, technical, system"
+    )
     timestamp: float = Field(default_factory=time.time, description="Unix epoch timestamp when created")
     source: str = Field(default="conversation", description="Origin: user_explicit, conversation, agent_inferred")
     confidence: float = Field(default=1.0, description="Confidence score from 0.0 to 1.0")
@@ -82,6 +89,7 @@ class MemoryEntryModel(BaseModel):
 
 class UserProfileModel(BaseModel):
     """Schema for user profile configuration and executive directives."""
+
     user_name: str = Field(default="Executive Leader", min_length=1)
     role: str = Field(default="Technology Leader", min_length=1)
     preferred_tone: str = Field(default="Direct, precise, highly analytical, proactive.")
@@ -94,8 +102,10 @@ class UserProfileModel(BaseModel):
 # 3. Career & ATS Scoring Schemas
 # ==============================================================================
 
+
 class ATSInterpretationModel(BaseModel):
     """Schema for ATS badge and executive summary."""
+
     badge: str = Field(default="Good Match")
     color: str = Field(default="green")
     message: str = Field(default="Resume satisfies core requirements.")
@@ -103,11 +113,17 @@ class ATSInterpretationModel(BaseModel):
 
 class ATSReportModel(BaseModel):
     """Schema for comprehensive 5-pillar ATS compatibility score output."""
+
     ats_score: float = Field(default=0.0, description="Overall ATS score clamped strictly to 0-100")
     sub_scores: Dict[str, float] = Field(default_factory=dict, description="Pillar scores (0-100)")
+
+    @staticmethod
+    def _default_missing_keywords() -> Dict[str, List[str]]:
+        return {"critical": [], "important": [], "optional": []}
+
     missing_keywords: Dict[str, List[str]] = Field(
-        default_factory=lambda: {"critical": [], "important": [], "optional": []},
-        description="Missing keywords by priority"
+        default_factory=_default_missing_keywords,
+        description="Missing keywords by priority",
     )
     suggestions: List[str] = Field(default_factory=list, description="Actionable improvement recommendations")
     interpretation: ATSInterpretationModel = Field(default_factory=ATSInterpretationModel)
@@ -126,8 +142,10 @@ class ATSReportModel(BaseModel):
 # 4. HR Outreach & Cold Email Schemas
 # ==============================================================================
 
+
 class OutreachRecipientModel(BaseModel):
     """Schema for outreach campaign recipient with RFC-compliant email verification."""
+
     first_name: str = Field(default="Colleague", description="Recipient's first name")
     company: str = Field(default="Target Organization", description="Target company or organization")
     role: str = Field(default="Hiring Manager", description="Recipient's job title or functional role")

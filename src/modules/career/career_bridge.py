@@ -7,18 +7,17 @@ education level, and skill count — not a trained ML model. Results are indicat
 estimates, not predictions.
 """
 
-import json
 import logging
-from typing import Dict, Any, List, Optional
-from langchain_core.tools import tool, BaseTool
+from typing import Any, Dict, List
 
+from langchain_core.tools import BaseTool, tool
+
+from src.modules.career.scorer.services.analysis import analyze_resume
 from src.modules.career.scorer.services.ats_scorer import ATSScorer
-from src.modules.career.scorer.services.analysis import analyze_resume, calculate_jd_resume_match
-from src.modules.career.scorer.utils.skill_extractor import extract_skills, get_all_skills_flat
-from src.modules.career.scorer.utils.keyword_extractor import extract_keywords
-from src.modules.career.scorer.utils.feature_extractor import extract_resume_features
+from src.modules.career.scorer.utils.skill_extractor import extract_skills
 
 logger = logging.getLogger(__name__)
+
 
 def calculate_deep_ats_metrics(resume_text: str, jd_text: str, mode: str = "deep") -> Dict[str, Any]:
     """
@@ -35,8 +34,9 @@ def calculate_deep_ats_metrics(resume_text: str, jd_text: str, mode: str = "deep
             "interpretation": {"badge": "Error", "color": "red", "message": str(e)},
             "sub_scores": {},
             "missing_keywords": {"critical": [], "important": [], "optional": []},
-            "suggestions": [f"Error analyzing ATS score: {str(e)}"]
+            "suggestions": [f"Error analyzing ATS score: {str(e)}"],
         }
+
 
 def get_resume_skills_categorized(text: str) -> Dict[str, List[str]]:
     """Extract and categorize all skills found in text."""
@@ -46,6 +46,7 @@ def get_resume_skills_categorized(text: str) -> Dict[str, List[str]]:
         logger.error(f"Skill extraction failed: {str(e)}")
         return {}
 
+
 def get_salary_and_role_estimate(resume_text: str) -> Dict[str, Any]:
     """Estimate candidate's job role, category, and salary range using heuristic analysis."""
     try:
@@ -54,19 +55,18 @@ def get_salary_and_role_estimate(resume_text: str) -> Dict[str, Any]:
         base_sal = int(predicted_salary) if predicted_salary else 1500000
         return {
             "job_title": predicted_job,
-            "category": "Technology" if any(t in str(predicted_job).lower() for t in ["engineer", "developer", "data", "software", "tech"]) else "General",
+            "category": "Technology"
+            if any(t in str(predicted_job).lower() for t in ["engineer", "developer", "data", "software", "tech"])
+            else "General",
             "matches": matches,
             "salary_estimate": {
                 "base": base_sal,
-                "range": {
-                    "min": int(base_sal * 0.85),
-                    "max": int(base_sal * 1.15)
-                },
+                "range": {"min": int(base_sal * 0.85), "max": int(base_sal * 1.15)},
                 "currency": "₹",
-                "confidence": "High" if features.get("years_experience", 0) > 0 else "Moderate"
+                "confidence": "High" if features.get("years_experience", 0) > 0 else "Moderate",
             },
             "experience_years": features.get("years_experience", 0),
-            "education_level": features.get("education_level", "Degree / Professional")
+            "education_level": features.get("education_level", "Degree / Professional"),
         }
     except Exception as e:
         logger.error(f"Salary and role estimation failed: {str(e)}")
@@ -78,12 +78,13 @@ def get_salary_and_role_estimate(resume_text: str) -> Dict[str, Any]:
                 "base": 1500000,
                 "range": {"min": 1200000, "max": 1800000},
                 "currency": "₹",
-                "confidence": "Moderate"
+                "confidence": "Moderate",
             },
             "experience_years": 3,
             "education_level": "Bachelor / Master",
-            "error": str(e)
+            "error": str(e),
         }
+
 
 @tool
 def analyze_resume_and_ats(resume_text: str, target_job_description: str = "") -> str:
@@ -100,7 +101,7 @@ def analyze_resume_and_ats(resume_text: str, target_job_description: str = "") -
         # Standalone resume analysis
         role_info = get_salary_and_role_estimate(resume_text)
         skills = get_resume_skills_categorized(resume_text)
-        
+
         flat_skills = []
         for cat, items in skills.items():
             flat_skills.append(f"  - {cat.replace('_', ' ').title()}: {', '.join(items)}")
@@ -133,8 +134,8 @@ def analyze_resume_and_ats(resume_text: str, target_job_description: str = "") -
 
     crit_miss = ", ".join(missing.get("critical", [])) or "None (all critical keywords matched)"
     imp_miss = ", ".join(missing.get("important", [])) or "None"
-    
-    sugg_str = "\n".join([f"  {idx+1}. {s}" for idx, s in enumerate(suggestions[:5])])
+
+    sugg_str = "\n".join([f"  {idx + 1}. {s}" for idx, s in enumerate(suggestions[:5])])
 
     out = (
         f"=== ATS Resume Compatibility Audit ===\n"
@@ -152,6 +153,7 @@ def analyze_resume_and_ats(resume_text: str, target_job_description: str = "") -
     )
     return out
 
+
 @tool
 def extract_candidate_skills(text: str) -> str:
     """
@@ -160,20 +162,21 @@ def extract_candidate_skills(text: str) -> str:
     """
     if not text or len(text.strip()) < 10:
         return "No text provided for skill extraction."
-    
+
     skills = get_resume_skills_categorized(text)
     if not skills:
         return "No known technical or domain skills were identified in the provided text."
-    
+
     lines = ["=== Identified Candidate Skills ==="]
     total_count = 0
     for category, items in skills.items():
         cat_name = category.replace("_", " ").title()
         lines.append(f"• {cat_name} ({len(items)}): {', '.join(items)}")
         total_count += len(items)
-    
+
     lines.append(f"\nTotal Technical Skills Detected: {total_count}")
     return "\n".join(lines)
+
 
 @tool
 def predict_career_salary_and_role(resume_text: str) -> str:
@@ -185,7 +188,7 @@ def predict_career_salary_and_role(resume_text: str) -> str:
     """
     if not resume_text or len(resume_text.strip()) < 30:
         return "Please provide complete resume text to evaluate salary and role expectations."
-    
+
     info = get_salary_and_role_estimate(resume_text)
     sal = info.get("salary_estimate", {})
     curr = sal.get("currency", "₹")
@@ -195,7 +198,7 @@ def predict_career_salary_and_role(resume_text: str) -> str:
         f"• Target Job Classification: {info.get('job_title')}",
         f"• Industry Domain: {info.get('category')}",
         f"• Experience Evaluation: {info.get('experience_years')} years",
-        f"• Highest Education Tier: {info.get('education_level')}"
+        f"• Highest Education Tier: {info.get('education_level')}",
     ]
 
     if sal and "range" in sal:
@@ -205,15 +208,11 @@ def predict_career_salary_and_role(resume_text: str) -> str:
         out.append(f"• Estimated Market Base: {curr}{base:,}")
         out.append(f"• Competitive Salary Band: {curr}{min_s:,} – {curr}{max_s:,}")
         out.append(f"• Estimate Confidence: {sal.get('confidence', 'Moderate')}")
-        out.append(f"• Note: Based on heuristic analysis, not a trained ML model.")
-    
+        out.append("• Note: Based on heuristic analysis, not a trained ML model.")
+
     return "\n".join(out)
+
 
 def get_career_tools() -> List[BaseTool]:
     """Retrieve all Career Intelligence and Resume Optimization tools."""
-    return [
-        analyze_resume_and_ats,
-        extract_candidate_skills,
-        predict_career_salary_and_role
-    ]
-
+    return [analyze_resume_and_ats, extract_candidate_skills, predict_career_salary_and_role]

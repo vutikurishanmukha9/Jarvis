@@ -1,6 +1,7 @@
 """
 Configuration settings for AI Resume Analyzer
 """
+
 import os
 from pathlib import Path
 
@@ -13,8 +14,8 @@ DATA_DIR = BASE_DIR / "data"
 
 # App config
 MAX_CONTENT_LENGTH = 16 * 1024 * 1024  # 16MB
-ALLOWED_EXTENSIONS = {'pdf', 'txt'}
-CURRENCY_SYMBOL = os.environ.get('CURRENCY_SYMBOL', '₹')  # Configurable via env
+ALLOWED_EXTENSIONS = {"pdf", "txt"}
+CURRENCY_SYMBOL = os.environ.get("CURRENCY_SYMBOL", "₹")  # Configurable via env
 
 # Model files
 JOB_CLASSIFIER_PATH = MODELS_DIR / "job_classifier.pkl"
@@ -30,20 +31,13 @@ SKILLS_TAXONOMY_PATH = DATA_DIR / "skills_taxonomy.json"
 
 # Constants
 MAX_TEXT_LENGTH = 5000
-MAX_JD_LENGTH = 10000          # Max chars for job description input
-MAX_PDF_PAGES = 10             # 10 pages covers most CVs including academic
+MAX_JD_LENGTH = 10000  # Max chars for job description input
+MAX_PDF_PAGES = 10  # 10 pages covers most CVs including academic
 TOP_MATCHES = 3
 MIN_TEXT_LENGTH = 50
 
 # Matching weights
-MATCHING_WEIGHTS = {
-    'semantic': 0.40,
-    'keyword': 0.30,
-    'skills': 0.20,
-    'context': 0.10
-}
+MATCHING_WEIGHTS = {"semantic": 0.40, "keyword": 0.30, "skills": 0.20, "context": 0.10}
 
 # Analytics
 ANALYTICS_FILE = DATA_DIR / "analytics.json"
-
-

@@ -7,12 +7,12 @@ Supports topological ordering for dependency-aware execution.
 import json
 import logging
 import re
-from typing import Dict, Any, List, Optional
-from langchain_openai import ChatOpenAI
-from langchain_core.messages import SystemMessage, HumanMessage
+from typing import Any, Dict, List, Optional
 
-from ..config import PROVIDERS, MAX_AUTONOMOUS_SUBTASKS
-from .profile_manager import ProfileManager
+from langchain_core.messages import HumanMessage, SystemMessage
+from langchain_openai import ChatOpenAI
+
+from ..config import MAX_AUTONOMOUS_SUBTASKS, PROVIDERS
 
 logger = logging.getLogger(__name__)
 
@@ -63,12 +63,12 @@ def topological_sort(tasks: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
     """
     Perform a topological sort on tasks using Kahn's algorithm.
     Tasks are ordered so that dependencies are always executed before dependents.
-    
+
     If cycles are detected, falls back to the original task order.
-    
+
     Args:
         tasks: List of task dicts, each with "id" and "depends_on" fields.
-        
+
     Returns:
         Tasks reordered in valid topological (dependency-respecting) order.
     """
@@ -78,7 +78,7 @@ def topological_sort(tasks: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
     # Build adjacency and in-degree maps
     task_map = {t["id"]: t for t in tasks}
     in_degree = {t["id"]: 0 for t in tasks}
-    dependents = {t["id"]: [] for t in tasks}  # id -> list of tasks that depend on it
+    dependents: Dict[str, List[str]] = {t["id"]: [] for t in tasks}  # id -> list of tasks that depend on it
 
     for task in tasks:
         deps = task.get("depends_on", [])
@@ -122,7 +122,7 @@ class GoalPlanner:
         api_key: str = "",
         model_name: str = "openai/gpt-4o",
         base_url: Optional[str] = None,
-        temperature: float = 0.1
+        temperature: float = 0.1,
     ):
         self.api_provider = api_provider
         self.api_key = api_key
@@ -137,7 +137,7 @@ class GoalPlanner:
             "api_key": self.api_key,
             "temperature": self.temperature,
             "max_retries": 2,
-            "timeout": 45
+            "timeout": 45,
         }
         if self.base_url:
             kwargs["base_url"] = self.base_url
@@ -148,34 +148,34 @@ class GoalPlanner:
         Deconstruct a high-level user goal into an executable subtask plan
         with dependency declarations and topological ordering.
         """
-        user_prompt = f"User Goal to Decompose:\n\"\"\"{goal}\"\"\""
+        user_prompt = f'User Goal to Decompose:\n"""{goal}"""'
         if context:
-            user_prompt += f"\n\nAdditional Context / Uploaded Data:\n\"\"\"{context}\"\"\""
+            user_prompt += f'\n\nAdditional Context / Uploaded Data:\n"""{context}"""'
 
-        messages = [
-            SystemMessage(content=PLANNING_SYSTEM_PROMPT),
-            HumanMessage(content=user_prompt)
-        ]
+        messages = [SystemMessage(content=PLANNING_SYSTEM_PROMPT), HumanMessage(content=user_prompt)]
 
         try:
             response = self.llm.invoke(messages)
-            raw_text = response.content.strip()
+            raw_text = str(response.content).strip()
 
-            # Extract JSON block
+            # Extract JSON block (markdown fence or bare JSON object)
             json_match = re.search(r"```(?:json)?\s*(\{.*?\})\s*```", raw_text, re.DOTALL)
             if json_match:
                 plan_json = json.loads(json_match.group(1))
             else:
-                # Direct JSON parse
-                plan_json = json.loads(raw_text)
+                raw_json_match = re.search(r"(\{.*\})", raw_text, re.DOTALL)
+                if raw_json_match:
+                    plan_json = json.loads(raw_json_match.group(1))
+                else:
+                    plan_json = json.loads(raw_text)
 
             # Ensure tasks list is bounded, schema-validated, and initialized
             raw_tasks = plan_json.get("tasks", [])[:MAX_AUTONOMOUS_SUBTASKS]
             validated_tasks = []
             for idx, t in enumerate(raw_tasks):
                 # Normalize keys for robust schema compatibility
-                task_id = str(t.get("id") or f"task_{idx+1}")
-                task_title = str(t.get("title") or f"Execute Subtask {idx+1}")
+                task_id = str(t.get("id") or f"task_{idx + 1}")
+                task_title = str(t.get("title") or f"Execute Subtask {idx + 1}")
                 task_instruction = str(t.get("instruction") or task_title)
                 tool_hint = str(t.get("tool_hint") or t.get("tool") or "general_assistant")
                 deliverable = str(t.get("expected_deliverable") or t.get("deliverable") or "Deliverable")
@@ -191,7 +191,7 @@ class GoalPlanner:
                     "depends_on": deps,
                     "status": "pending",
                     "result": "",
-                    "attempts": 0
+                    "attempts": 0,
                 }
                 validated_tasks.append(subtask_entry)
 
@@ -218,7 +218,7 @@ class GoalPlanner:
                         "depends_on": [],
                         "status": "pending",
                         "result": "",
-                        "attempts": 0
+                        "attempts": 0,
                     },
                     {
                         "id": "task_2",
@@ -229,7 +229,7 @@ class GoalPlanner:
                         "depends_on": ["task_1"],
                         "status": "pending",
                         "result": "",
-                        "attempts": 0
-                    }
-                ]
+                        "attempts": 0,
+                    },
+                ],
             }

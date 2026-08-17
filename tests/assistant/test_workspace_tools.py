@@ -3,19 +3,21 @@ Tests for workspace file operations, path confinement, Excel/Word generation, an
 """
 
 import json
+
 import pytest
-from pathlib import Path
+
 from src.assistant.workspace_tools import (
     _resolve_workspace_path,
-    write_workspace_file,
-    read_workspace_file,
-    list_workspace_files,
     generate_excel_spreadsheet,
     generate_word_document,
+    get_workspace_tools,
+    list_workspace_files,
+    read_workspace_file,
     save_personal_memory,
-    get_workspace_tools
+    write_workspace_file,
 )
 from src.config import WORKSPACE_DIR
+
 
 def test_resolve_workspace_path_confinement():
     """Verify that path traversal attempts are confined strictly within WORKSPACE_DIR."""
@@ -29,6 +31,7 @@ def test_resolve_workspace_path_confinement():
     with pytest.raises(ValueError):
         _resolve_workspace_path("/etc/passwd")
 
+
 def test_write_and_read_workspace_file():
     """Verify creating and reading text and script files in workspace."""
     filename = "test_script.py"
@@ -40,10 +43,12 @@ def test_write_and_read_workspace_file():
     read_res = read_workspace_file.invoke({"filename": filename})
     assert "math.sqrt(144)" in read_res
 
+
 def test_read_nonexistent_file():
     """Verify reading a non-existent file returns a friendly error message."""
     res = read_workspace_file.invoke({"filename": "ghost_file_9999.txt"})
     assert "does not exist" in res.lower()
+
 
 def test_list_workspace_files():
     """Verify listing workspace files reports file names and sizes."""
@@ -53,28 +58,26 @@ def test_list_workspace_files():
     assert "Workspace Files" in listing
     assert "file_alpha.txt" in listing
 
+
 def test_generate_excel_spreadsheet():
     """Verify generating .xlsx files from JSON table data."""
-    table_data = json.dumps([
-        {"Quarter": "Q1", "Revenue": 150000, "Margin": 0.22},
-        {"Quarter": "Q2", "Revenue": 180000, "Margin": 0.25}
-    ])
-    res = generate_excel_spreadsheet.invoke({
-        "filename": "quarterly_financials.xlsx",
-        "json_table_data": table_data,
-        "sheet_name": "Q1_Q2_Summary"
-    })
+    table_data = json.dumps(
+        [{"Quarter": "Q1", "Revenue": 150000, "Margin": 0.22}, {"Quarter": "Q2", "Revenue": 180000, "Margin": 0.25}]
+    )
+    res = generate_excel_spreadsheet.invoke(
+        {"filename": "quarterly_financials.xlsx", "json_table_data": table_data, "sheet_name": "Q1_Q2_Summary"}
+    )
     assert "Successfully generated Excel" in res
     assert (WORKSPACE_DIR / "quarterly_financials.xlsx").exists()
 
+
 def test_generate_excel_invalid_json():
     """Verify error handling when malformed JSON is passed to Excel generator."""
-    res = generate_excel_spreadsheet.invoke({
-        "filename": "bad_table.xlsx",
-        "json_table_data": "not valid json {",
-        "sheet_name": "Sheet1"
-    })
+    res = generate_excel_spreadsheet.invoke(
+        {"filename": "bad_table.xlsx", "json_table_data": "not valid json {", "sheet_name": "Sheet1"}
+    )
     assert "Error" in res or "Invalid JSON" in res
+
 
 def test_generate_word_document():
     """Verify generating Word (.docx) documents with headings and lists."""
@@ -86,20 +89,17 @@ def test_generate_word_document():
         "### Conclusion\n"
         "The model is ready for production deployment."
     )
-    res = generate_word_document.invoke({
-        "filename": "executive_briefing.docx",
-        "title": "Mission Briefing",
-        "markdown_content": md_text
-    })
+    res = generate_word_document.invoke(
+        {"filename": "executive_briefing.docx", "title": "Mission Briefing", "markdown_content": md_text}
+    )
     assert "Successfully generated Word Document" in res or "Saved document as Markdown" in res
+
 
 def test_save_personal_memory_tool():
     """Verify tool wrapper for saving long-term memory facts."""
-    res = save_personal_memory.invoke({
-        "fact": "Target launch date is October 15th.",
-        "category": "milestones"
-    })
+    res = save_personal_memory.invoke({"fact": "Target launch date is October 15th.", "category": "milestones"})
     assert "persistent memory" in res.lower()
+
 
 def test_workspace_tools_suite():
     """Verify all 6 workspace tools are exposed in the module registry."""

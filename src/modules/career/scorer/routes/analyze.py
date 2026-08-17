@@ -1,21 +1,22 @@
-﻿import logging
+import logging
 import traceback as tb_mod
 from typing import Optional
-from fastapi import APIRouter, UploadFile, File, Form, Request, HTTPException
+
+from fastapi import APIRouter, File, Form, HTTPException, Request, UploadFile
 from starlette.concurrency import run_in_threadpool
 
 from src.modules.career.scorer.config import CURRENCY_SYMBOL, MAX_JD_LENGTH
-from src.modules.career.scorer.services.model_manager import model_manager
 from src.modules.career.scorer.services.analysis import analyze_resume, calculate_jd_resume_match
-from src.modules.career.scorer.services.ats_scorer import ATSScorer
 from src.modules.career.scorer.services.analytics import track_analysis
-from src.modules.career.scorer.utils.text_processing import (
-    allowed_file,
-    read_upload_bytes,
-    extract_text_from_bytes,
-)
+from src.modules.career.scorer.services.ats_scorer import ATSScorer
+from src.modules.career.scorer.services.model_manager import model_manager
 from src.modules.career.scorer.utils.keyword_extractor import extract_keywords
 from src.modules.career.scorer.utils.skill_extractor import extract_skills, get_all_skills_flat
+from src.modules.career.scorer.utils.text_processing import (
+    allowed_file,
+    extract_text_from_bytes,
+    read_upload_bytes,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -41,33 +42,33 @@ def _run_full_analysis(
     # ── 1. Upload analysis (job prediction + salary) ──────────
     try:
         predicted_job, matches, salary, salary_details = analyze_resume(resume_text)
-        results['upload'] = {
-            'success': True,
-            'predicted_job': predicted_job,
-            'matches': [{'title': t, 'score': f"{s:.3f}"} for t, s in matches],
-            'salary': f"{CURRENCY_SYMBOL}{int(salary):,}",
-            'salary_details': salary_details,
+        results["upload"] = {
+            "success": True,
+            "predicted_job": predicted_job,
+            "matches": [{"title": t, "score": f"{s:.3f}"} for t, s in matches],
+            "salary": f"{CURRENCY_SYMBOL}{int(salary):,}",
+            "salary_details": salary_details,
         }
     except Exception as e:
         logger.warning(f"Upload analysis failed: {e}")
         logger.debug(tb_mod.format_exc())
-        results['upload'] = {'success': False, 'error': str(e)}
+        results["upload"] = {"success": False, "error": str(e)}
 
     # ── 2. JD Match (semantic + keyword + skills) ─────────────
     try:
         match_pct, detailed = calculate_jd_resume_match(resume_text, jd_text)
-        results['jd_match'] = {
-            'success': True,
-            'match_percentage': match_pct,
-            'component_scores': detailed.get('component_scores', {}),
-            'missing_keywords': detailed.get('missing_keywords', {}),
-            'keyword_suggestions': detailed.get('keyword_suggestions', []),
-            'skills_breakdown': detailed.get('skills_breakdown', {}),
+        results["jd_match"] = {
+            "success": True,
+            "match_percentage": match_pct,
+            "component_scores": detailed.get("component_scores", {}),
+            "missing_keywords": detailed.get("missing_keywords", {}),
+            "keyword_suggestions": detailed.get("keyword_suggestions", []),
+            "skills_breakdown": detailed.get("skills_breakdown", {}),
         }
     except Exception as e:
         logger.warning(f"JD match failed: {e}")
         logger.debug(tb_mod.format_exc())
-        results['jd_match'] = {'success': False, 'error': str(e)}
+        results["jd_match"] = {"success": False, "error": str(e)}
 
     # ── 3. ATS Score ──────────────────────────────────────────
     try:
@@ -78,15 +79,12 @@ def _run_full_analysis(
         jd_keywords = extract_keywords(jd_text)
 
         semantic_similarity = None
-        if mode == 'deep' and model_manager.embed_model:
+        if mode == "deep" and model_manager.embed_model:
             try:
                 from src.modules.career.scorer.config import MAX_TEXT_LENGTH
-                resume_emb = model_manager.embed_model.encode(
-                    resume_text[:MAX_TEXT_LENGTH], convert_to_tensor=True
-                )
-                jd_emb = model_manager.embed_model.encode(
-                    jd_text[:MAX_TEXT_LENGTH], convert_to_tensor=True
-                )
+
+                resume_emb = model_manager.embed_model.encode(resume_text[:MAX_TEXT_LENGTH], convert_to_tensor=True)
+                jd_emb = model_manager.embed_model.encode(jd_text[:MAX_TEXT_LENGTH], convert_to_tensor=True)
                 semantic_similarity = float(util.cos_sim(resume_emb, jd_emb)[0][0])
             except Exception as e:
                 logger.warning(f"Semantic similarity failed: {e}")
@@ -102,11 +100,11 @@ def _run_full_analysis(
             jd_keywords=jd_keywords,
             semantic_similarity=semantic_similarity,
         )
-        results['ats'] = {'success': True, **ats_result}
+        results["ats"] = {"success": True, **ats_result}
     except Exception as e:
         logger.warning(f"ATS scoring failed: {e}")
         logger.debug(tb_mod.format_exc())
-        results['ats'] = {'success': False, 'error': str(e)}
+        results["ats"] = {"success": False, "error": str(e)}
 
     return results
 
@@ -131,30 +129,29 @@ async def analyze_full(
         if not model_manager.is_loaded():
             raise HTTPException(
                 status_code=503,
-                detail='System is still initializing. Please try again.',
+                detail="System is still initializing. Please try again.",
             )
 
         jd_text = jd_text.strip()
         jd_title = jd_title.strip()
         mode = mode.lower()
-        if mode not in ('quick', 'deep'):
-            mode = 'deep'
+        if mode not in ("quick", "deep"):
+            mode = "deep"
 
         if not jd_text:
-            raise HTTPException(status_code=400, detail='Please provide a job description')
+            raise HTTPException(status_code=400, detail="Please provide a job description")
         if len(jd_text) > MAX_JD_LENGTH:
             raise HTTPException(
-                status_code=400,
-                detail=f'Job description too long ({len(jd_text)} chars). Maximum is {MAX_JD_LENGTH}.'
+                status_code=400, detail=f"Job description too long ({len(jd_text)} chars). Maximum is {MAX_JD_LENGTH}."
             )
 
         if not resume or not resume.filename:
-            raise HTTPException(status_code=400, detail='Please upload a resume file')
+            raise HTTPException(status_code=400, detail="Please upload a resume file")
 
         if not allowed_file(resume.filename):
             raise HTTPException(
                 status_code=400,
-                detail='Invalid file type. Only PDF and TXT files are allowed.',
+                detail="Invalid file type. Only PDF and TXT files are allowed.",
             )
 
         # ── Read file into memory (no disk I/O) ──────────────
@@ -173,27 +170,28 @@ async def analyze_full(
         )
 
         # Track analytics
-        track_analysis('analyze_full', {
-            'ats_score': results.get('ats', {}).get('ats_score', 0),
-            'match_pct': results.get('jd_match', {}).get('match_percentage', 0),
-            'mode': mode,
-        })
+        track_analysis(
+            "analyze_full",
+            {
+                "ats_score": results.get("ats", {}).get("ats_score", 0),
+                "match_pct": results.get("jd_match", {}).get("match_percentage", 0),
+                "mode": mode,
+            },
+        )
 
-        return {'success': True, **results}
+        return {"success": True, **results}
 
     except HTTPException:
         raise
     except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        raise HTTPException(status_code=400, detail=str(e)) from e
     except (OSError, IOError) as e:
         logger.error(f"File processing error: {e}")
         raise HTTPException(
             status_code=422,
-            detail='Could not read the uploaded file. It may be corrupted or in an unsupported format.',
-        )
+            detail="Could not read the uploaded file. It may be corrupted or in an unsupported format.",
+        ) from e
     except Exception as e:
         logger.error(f"Analyze-full error: {e}")
         logger.error(tb_mod.format_exc())
-        raise HTTPException(status_code=500, detail='Analysis failed. Please try again.')
-
-
+        raise HTTPException(status_code=500, detail="Analysis failed. Please try again.") from e

@@ -3,11 +3,10 @@ Tests for FAISS vector indexing and nearest neighbor search in Career Module.
 Verifies L2 normalization, sub-millisecond query execution, and multi-tensor format handling.
 """
 
-import pytest
 import numpy as np
-import torch
-import faiss
 import pandas as pd
+import pytest
+import torch
 
 from src.modules.career.scorer.services.model_manager import ModelManager
 
@@ -16,22 +15,24 @@ from src.modules.career.scorer.services.model_manager import ModelManager
 def mock_model_manager():
     """Create an isolated ModelManager instance with synthetic embeddings."""
     mgr = ModelManager()
-    mgr.job_df = pd.DataFrame({
-        "Job Title": [
-            "Senior AI Engineer",
-            "Full Stack Developer",
-            "Data Scientist",
-            "DevOps Cloud Architect",
-            "Product Manager"
-        ],
-        "Job Description": [
-            "Lead LLM architecture and multi-agent systems with PyTorch.",
-            "Build React and Python FastAPI microservices.",
-            "Train machine learning models and feature engineering with Pandas.",
-            "Deploy Kubernetes clusters and CI/CD pipelines on AWS.",
-            "Drive product roadmap and sprint planning."
-        ]
-    })
+    mgr.job_df = pd.DataFrame(
+        {
+            "Job Title": [
+                "Senior AI Engineer",
+                "Full Stack Developer",
+                "Data Scientist",
+                "DevOps Cloud Architect",
+                "Product Manager",
+            ],
+            "Job Description": [
+                "Lead LLM architecture and multi-agent systems with PyTorch.",
+                "Build React and Python FastAPI microservices.",
+                "Train machine learning models and feature engineering with Pandas.",
+                "Deploy Kubernetes clusters and CI/CD pipelines on AWS.",
+                "Drive product roadmap and sprint planning.",
+            ],
+        }
+    )
     # Create deterministic synthetic embeddings [5, 384]
     np.random.seed(42)
     fake_embeddings = np.random.randn(5, 384).astype("float32")

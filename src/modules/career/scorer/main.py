@@ -1,25 +1,25 @@
-﻿import os
-import sys
 import logging
+import os
+import sys
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
-from fastapi.responses import JSONResponse, FileResponse
 
-from src.modules.career.scorer.config import BASE_DIR, FRONTEND_DIR
+from src.modules.career.scorer.config import FRONTEND_DIR
 from src.modules.career.scorer.exceptions import ResumeAnalyzerError
-from src.modules.career.scorer.services.model_manager import load_all_models
 from src.modules.career.scorer.rate_limiter import limiter, rate_limiting_enabled
-from src.modules.career.scorer.routes import general_router, upload_router, match_router, ats_router, analyze_router
+from src.modules.career.scorer.routes import analyze_router, ats_router, general_router, match_router, upload_router
+from src.modules.career.scorer.services.model_manager import load_all_models
 
 # -------------------- LOGGING --------------------
 logging.basicConfig(
     level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
     handlers=[logging.StreamHandler(sys.stdout)],
-    force=True
+    force=True,
 )
 logger = logging.getLogger(__name__)
 
@@ -50,15 +50,14 @@ app = FastAPI(
     title="AI Resume Analyzer",
     description="Analyze resumes, match against job descriptions, and calculate ATS scores",
     version="2.0.0",
-    lifespan=lifespan
+    lifespan=lifespan,
 )
 
 # -------------------- MIDDLEWARE --------------------
 # CORS for split deployment (React frontend + FastAPI backend)
 # Use ALLOWED_ORIGINS env var in production; defaults to dev origins.
 _allowed_origins = os.environ.get(
-    "ALLOWED_ORIGINS",
-    "http://localhost:5173,http://localhost:3000,http://localhost:8000"
+    "ALLOWED_ORIGINS", "http://localhost:5173,http://localhost:3000,http://localhost:8000"
 ).split(",")
 
 app.add_middleware(
@@ -115,37 +114,23 @@ else:
 async def handle_resume_analyzer_error(request: Request, error: ResumeAnalyzerError):
     """Handle all custom Resume Analyzer exceptions"""
     logger.warning(f"{error.__class__.__name__}: {error.message}")
-    return JSONResponse(
-        status_code=error.status_code,
-        content=error.to_dict()
-    )
+    return JSONResponse(status_code=error.status_code, content=error.to_dict())
 
 
 @app.exception_handler(413)
 async def request_entity_too_large(request: Request, exc):
     """Handle file too large error"""
-    return JSONResponse(
-        status_code=413,
-        content={'error': 'File size exceeds 16MB limit'}
-    )
+    return JSONResponse(status_code=413, content={"error": "File size exceeds 16MB limit"})
 
 
 @app.exception_handler(404)
 async def not_found(request: Request, exc):
     """Handle 404 errors"""
-    return JSONResponse(
-        status_code=404,
-        content={'error': 'Endpoint not found'}
-    )
+    return JSONResponse(status_code=404, content={"error": "Endpoint not found"})
 
 
 @app.exception_handler(500)
 async def internal_error(request: Request, exc):
     """Handle 500 errors"""
     logger.error(f"Internal server error: {exc}")
-    return JSONResponse(
-        status_code=500,
-        content={'error': 'Internal server error'}
-    )
-
-
+    return JSONResponse(status_code=500, content={"error": "Internal server error"})

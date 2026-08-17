@@ -4,12 +4,13 @@ Session Management and Conversational Memory Persistence for Jarvis.
 
 import json
 import logging
-import time
 import re
+import time
 import uuid
 from pathlib import Path
-from typing import Dict, List, Any, Optional, Tuple
-from langchain_core.messages import HumanMessage, AIMessage, BaseMessage
+from typing import List, Tuple
+
+from langchain_core.messages import AIMessage, BaseMessage, HumanMessage
 
 logger = logging.getLogger(__name__)
 
@@ -23,9 +24,10 @@ def _session_file(session_id: str) -> Path:
         raise ValueError("Invalid session ID.")
     return SESSIONS_DIR / f"{session_id}.json"
 
+
 class SessionManager:
     """Manages chat sessions, history persistence, and exports."""
-    
+
     @staticmethod
     def list_sessions() -> List[str]:
         """List all saved session IDs."""
@@ -48,18 +50,15 @@ class SessionManager:
             serializable_msgs = []
             for msg in messages:
                 role = "human" if isinstance(msg, HumanMessage) else "ai"
-                serializable_msgs.append({
-                    "role": role,
-                    "content": msg.content
-                })
-            
+                serializable_msgs.append({"role": role, "content": msg.content})
+
             data = {
                 "session_id": session_id,
                 "persona": persona,
                 "timestamp": time.time(),
-                "messages": serializable_msgs
+                "messages": serializable_msgs,
             }
-            
+
             file_path = _session_file(session_id)
             with open(file_path, "w", encoding="utf-8") as f:
                 json.dump(data, f, indent=2, ensure_ascii=False)
@@ -75,18 +74,18 @@ class SessionManager:
             return [], "JARVIS Supreme"
         if not file_path.exists():
             return [], "JARVIS Supreme"
-        
+
         try:
             with open(file_path, "r", encoding="utf-8") as f:
                 data = json.load(f)
-            
+
             messages: List[BaseMessage] = []
             for m in data.get("messages", []):
                 if m.get("role") == "human":
                     messages.append(HumanMessage(content=m.get("content", "")))
                 else:
                     messages.append(AIMessage(content=m.get("content", "")))
-                    
+
             persona = data.get("persona", "JARVIS Supreme")
             return messages, persona
         except Exception as e:
@@ -101,24 +100,22 @@ class SessionManager:
             f"**Persona**: {persona}",
             f"**Exported At**: {time.strftime('%Y-%m-%d %H:%M:%S')}",
             "---",
-            ""
+            "",
         ]
         for msg in messages:
             role = "USER" if isinstance(msg, HumanMessage) else "JARVIS"
             lines.append(f"### {role}")
-            lines.append(msg.content)
+            lines.append(str(msg.content))
             lines.append("")
         return "\n".join(lines)
 
     @staticmethod
     def prune_context_window(
-        messages: List[BaseMessage],
-        max_messages: int = 20,
-        max_chars: int = 16000
+        messages: List[BaseMessage], max_messages: int = 20, max_chars: int = 16000
     ) -> List[BaseMessage]:
         """
         Prune conversational history using a sliding window to fit within LLM token/context budgets.
-        
+
         Rules:
         - If messages count <= max_messages and total length <= max_chars, returns unmodified list.
         - Keeps the first message if it establishes primary user intent / system role.
@@ -133,13 +130,13 @@ class SessionManager:
             if max_messages <= 1:
                 pruned = messages[-1:]
             else:
-                pruned = [messages[0]] + list(messages[-(max_messages - 1):])
+                pruned = [messages[0]] + list(messages[-(max_messages - 1) :])
         else:
             pruned = list(messages)
 
         # 2. Character Budget Guard: Calculate total length and truncate from older turns if needed
         total_chars = sum(len(str(getattr(m, "content", ""))) for m in pruned)
-        
+
         if total_chars > max_chars:
             while len(pruned) > 2 and total_chars > max_chars:
                 removed = pruned.pop(1)

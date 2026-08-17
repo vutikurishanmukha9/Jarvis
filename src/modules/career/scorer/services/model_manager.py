@@ -1,25 +1,26 @@
 """
 Model Manager - Centralized ML model loading and management
 """
-import os
+
 import hashlib
 import logging
-import traceback
+import os
 import threading
-from typing import Optional, List, Tuple, Any, Dict
+import traceback
+from typing import Any, List, Optional, Tuple
 
-import torch
-import joblib
 import faiss
+import joblib
 import numpy as np
 import pandas as pd
+import torch
 from sentence_transformers import SentenceTransformer
 
 from src.modules.career.scorer.config import (
+    EMBEDDING_CACHE_FILE,
     JOB_CLASSIFIER_PATH,
-    SALARY_PREDICTOR_PATH,
     JOB_DATA_CSV,
-    EMBEDDING_CACHE_FILE
+    SALARY_PREDICTOR_PATH,
 )
 
 logger = logging.getLogger(__name__)
@@ -47,6 +48,7 @@ def _verify_model_artifact(path: str) -> None:
 
 class ModelManager:
     """Centralized model management with FAISS ANN indexing and safe tensor serialization"""
+
     _instance = None
     _lock = threading.Lock()
 
@@ -100,7 +102,7 @@ class ModelManager:
             self.job_df = pd.read_csv(JOB_DATA_CSV)
 
             # Validate dataset columns
-            required_columns = ['Job Description', 'Job Title']
+            required_columns = ["Job Description", "Job Title"]
             if not all(col in self.job_df.columns for col in required_columns):
                 raise ValueError(f"Dataset must contain {required_columns} columns")
 
@@ -109,7 +111,7 @@ class ModelManager:
             logger.info(f"Job dataset loaded with {len(self.job_df)} entries")
 
             # Load embedding model
-            self.embed_model = SentenceTransformer('all-MiniLM-L6-v2')
+            self.embed_model = SentenceTransformer("all-MiniLM-L6-v2")
             self.embed_model.max_seq_length = 256
             logger.info("Sentence Transformer model loaded")
 
@@ -121,11 +123,11 @@ class ModelManager:
 
         except FileNotFoundError as e:
             logger.error(f"Required file missing: {e}")
-            raise RuntimeError(f"Model initialization failed: {e}")
+            raise RuntimeError(f"Model initialization failed: {e}") from e
         except Exception as e:
             logger.error(f"Model loading failed: {e}")
             logger.error(traceback.format_exc())
-            raise RuntimeError(f"Failed to initialize models: {str(e)}")
+            raise RuntimeError(f"Failed to initialize models: {str(e)}") from e
 
     def _precompute_job_embeddings(self):
         """Precompute embeddings for job descriptions with validation"""
@@ -133,11 +135,7 @@ class ModelManager:
             # Try to load cached embeddings safely using PyTorch weights_only=True
             if os.path.exists(EMBEDDING_CACHE_FILE):
                 try:
-                    self.job_embeddings = torch.load(
-                        EMBEDDING_CACHE_FILE,
-                        map_location="cpu",
-                        weights_only=True
-                    )
+                    self.job_embeddings = torch.load(EMBEDDING_CACHE_FILE, map_location="cpu", weights_only=True)
 
                     # Validate cache matches current dataset
                     if len(self.job_embeddings) == len(self.job_df):
@@ -150,17 +148,14 @@ class ModelManager:
                     logger.warning(f"Cache load failed: {e}, recomputing embeddings...")
 
             # Compute new embeddings
-            job_descriptions = self.job_df['Job Description'].fillna('').tolist()
+            job_descriptions = self.job_df["Job Description"].fillna("").tolist()
 
             if not job_descriptions:
                 raise ValueError("No job descriptions found in dataset")
 
             logger.info(f"Computing embeddings for {len(job_descriptions)} job descriptions...")
             self.job_embeddings = self.embed_model.encode(
-                job_descriptions,
-                convert_to_tensor=True,
-                show_progress_bar=True,
-                batch_size=32
+                job_descriptions, convert_to_tensor=True, show_progress_bar=True, batch_size=32
             )
 
             # Cache the embeddings safely using PyTorch
@@ -199,7 +194,7 @@ class ModelManager:
     def search_jobs(self, query_embedding: Any, top_k: int = 3) -> List[Tuple[str, float, int]]:
         """
         Query the FAISS vector index for top-k matching jobs in sub-millisecond C++ time.
-        
+
         Returns:
             List of (job_title, similarity_score, dataset_row_index)
         """
@@ -221,7 +216,7 @@ class ModelManager:
         distances, indices = self.faiss_index.search(query_np, top_k)
 
         matches = []
-        for dist, idx in zip(distances[0], indices[0]):
+        for dist, idx in zip(distances[0], indices[0], strict=True):
             if idx < 0 or idx >= len(self.job_df):
                 continue
             job_title = self.job_df.iloc[idx]["Job Title"]
@@ -240,7 +235,7 @@ model_manager = ModelManager()
 
 def load_all_models():
     """Load all ML models synchronously during startup.
-    
+
     Raises on failure so FastAPI's lifespan handler aborts
     instead of starting a silently broken server.
     """
@@ -256,5 +251,3 @@ def load_all_models():
 
 # Backward-compat alias
 load_models_background = load_all_models
-
-

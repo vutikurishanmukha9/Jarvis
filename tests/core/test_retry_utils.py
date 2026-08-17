@@ -3,7 +3,9 @@ Tests for exponential backoff and jittered retry utility in src/core/retry_utils
 """
 
 import pytest
+
 from src.core.retry_utils import retry_with_backoff
+
 
 def test_retry_success_on_first_attempt():
     """Verify function executes once and returns cleanly on immediate success."""
@@ -18,6 +20,7 @@ def test_retry_success_on_first_attempt():
     res = quick_task()
     assert res == "SUCCESS"
     assert calls == 1
+
 
 def test_retry_recovers_after_transient_failure():
     """Verify function retries after failures and returns value once recovered."""
@@ -34,6 +37,7 @@ def test_retry_recovers_after_transient_failure():
     res = flaky_task()
     assert res == "RECOVERED"
     assert calls == 3
+
 
 def test_retry_exhaustion_raises_final_exception():
     """Verify function raises exception once max retries are exhausted."""

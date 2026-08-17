@@ -1,4 +1,4 @@
-﻿"""
+"""
 General Routes for AI Resume Analyzer
 
 Handles health checks, readiness checks, and serves the React SPA in production.
@@ -24,11 +24,5 @@ def ready_check():
     is_ready = model_manager.is_loaded()
     status_code = 200 if is_ready else 503
     return JSONResponse(
-        content={
-            'status': 'ready' if is_ready else 'loading',
-            'models_loaded': is_ready
-        },
-        status_code=status_code
+        content={"status": "ready" if is_ready else "loading", "models_loaded": is_ready}, status_code=status_code
     )
-
-

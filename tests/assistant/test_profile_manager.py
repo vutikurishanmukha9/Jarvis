@@ -3,8 +3,11 @@ Tests for ProfileManager user preferences, memory CRUD operations, and confidenc
 """
 
 import time
+
 import pytest
-from src.assistant.profile_manager import ProfileManager, DEFAULT_PROFILE
+
+from src.assistant.profile_manager import ProfileManager
+
 
 @pytest.fixture(autouse=True)
 def clean_memory_state():
@@ -12,6 +15,7 @@ def clean_memory_state():
     ProfileManager.clear_memories()
     yield
     ProfileManager.clear_memories()
+
 
 def test_profile_load_and_default_keys():
     """Verify default profile keys and values."""
@@ -21,6 +25,7 @@ def test_profile_load_and_default_keys():
     assert "role_description" in profile
     assert "preferred_style" in profile
     assert "custom_instructions" in profile
+
 
 def test_profile_save_and_reload():
     """Verify saving updated profile persists to disk."""
@@ -33,14 +38,15 @@ def test_profile_save_and_reload():
     assert reloaded["user_name"] == "Tony Stark"
     assert reloaded["role_description"] == "Chief AI Architect"
 
+
 def test_memory_add_with_source_and_confidence():
     """Verify adding memories records source and confidence metrics."""
-    assert ProfileManager.add_memory(
-        "Prefers dark mode UI theme.",
-        category="preferences",
-        source="user_explicit",
-        confidence=1.0
-    ) is True
+    assert (
+        ProfileManager.add_memory(
+            "Prefers dark mode UI theme.", category="preferences", source="user_explicit", confidence=1.0
+        )
+        is True
+    )
 
     memories = ProfileManager.load_memories()
     assert len(memories) == 1
@@ -50,6 +56,7 @@ def test_memory_add_with_source_and_confidence():
     assert mem["source"] == "user_explicit"
     assert mem["confidence"] == 1.0
     assert "timestamp" in mem
+
 
 def test_memory_confidence_clamping():
     """Verify confidence score is strictly bounded to [0.0, 1.0]."""
@@ -62,18 +69,19 @@ def test_memory_confidence_clamping():
     assert memories[0]["confidence"] == 1.0
     assert memories[1]["confidence"] == 0.0
 
+
 def test_memory_update_by_id():
     """Verify updating a specific memory by unique ID."""
     ProfileManager.add_memory("Initial fact text", category="general", confidence=0.5)
     memories = ProfileManager.load_memories()
     mem_id = memories[0]["id"]
 
-    assert ProfileManager.update_memory(
-        memory_id=mem_id,
-        new_fact="Corrected fact text",
-        new_category="updates",
-        new_confidence=0.9
-    ) is True
+    assert (
+        ProfileManager.update_memory(
+            memory_id=mem_id, new_fact="Corrected fact text", new_category="updates", new_confidence=0.9
+        )
+        is True
+    )
 
     updated_memories = ProfileManager.load_memories()
     updated = updated_memories[0]
@@ -82,9 +90,11 @@ def test_memory_update_by_id():
     assert updated["confidence"] == 0.9
     assert updated["updated_at"] is not None
 
+
 def test_memory_update_nonexistent_id():
     """Verify update returns False for invalid IDs."""
     assert ProfileManager.update_memory("mem_invalid_9999", new_fact="New fact") is False
+
 
 def test_memory_delete_by_id():
     """Verify deleting a specific memory by ID."""
@@ -101,9 +111,11 @@ def test_memory_delete_by_id():
     assert len(remaining) == 1
     assert remaining[0]["fact"] == "Keep this fact"
 
+
 def test_memory_delete_nonexistent_id():
     """Verify delete returns False for invalid IDs."""
     assert ProfileManager.delete_memory("mem_nonexistent_8888") is False
+
 
 def test_memory_clear_all():
     """Verify clear_memories resets the memory store."""
@@ -113,6 +125,7 @@ def test_memory_clear_all():
 
     assert ProfileManager.clear_memories() is True
     assert ProfileManager.load_memories() == []
+
 
 def test_memory_system_context_confidence_sorting():
     """Verify system context sorts memories by confidence descending and caps at 10."""

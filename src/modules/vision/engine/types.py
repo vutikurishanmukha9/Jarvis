@@ -1,15 +1,15 @@
 """
 Type definitions for the Multimodal AI System.
 
-This module provides type aliases and TypedDict definitions for 
+This module provides type aliases and TypedDict definitions for
 better type checking and IDE support throughout the codebase.
 """
 
-from typing import TypedDict, List, Dict, Any, Optional, Tuple, Union
-from typing_extensions import NotRequired
+from typing import Any, Dict, List, Optional, Tuple, TypedDict
+
 import numpy as np
 from PIL import Image
-
+from typing_extensions import NotRequired
 
 # Basic type aliases
 ImageArray = np.ndarray
@@ -22,6 +22,7 @@ Point = Tuple[int, int]
 # Object Detection Types
 class DetectedObject(TypedDict):
     """Type definition for a detected object."""
+
     class_id: int
     class_name: str
     confidence: float
@@ -32,6 +33,7 @@ class DetectedObject(TypedDict):
 
 class DetectionResult(TypedDict):
     """Type definition for object detection results."""
+
     objects: List[DetectedObject]
     inference_time: float
     image_size: Tuple[int, int]
@@ -40,6 +42,7 @@ class DetectionResult(TypedDict):
 # Color Analysis Types
 class ExtractedColor(TypedDict):
     """Type definition for an extracted color."""
+
     rgb: RGBColor
     hex: str
     percentage: float
@@ -48,6 +51,7 @@ class ExtractedColor(TypedDict):
 
 class ColorResult(TypedDict):
     """Type definition for color extraction results."""
+
     colors: List[ExtractedColor]
     method: str
     num_colors: int
@@ -56,6 +60,7 @@ class ColorResult(TypedDict):
 # OCR Types
 class OCRWord(TypedDict):
     """Type definition for an OCR word."""
+
     text: str
     confidence: float
     bbox: NotRequired[BoundingBox]
@@ -63,6 +68,7 @@ class OCRWord(TypedDict):
 
 class OCRResult(TypedDict):
     """Type definition for OCR results."""
+
     text: str
     words: List[OCRWord]
     word_count: int
@@ -72,6 +78,7 @@ class OCRResult(TypedDict):
 # Face Detection Types
 class DetectedFace(TypedDict):
     """Type definition for a detected face."""
+
     bbox: BoundingBox
     confidence: float
     width: int
@@ -80,6 +87,7 @@ class DetectedFace(TypedDict):
 
 class FaceResult(TypedDict):
     """Type definition for face detection results."""
+
     faces: List[DetectedFace]
     total_faces: int
 
@@ -87,6 +95,7 @@ class FaceResult(TypedDict):
 # Image Quality Types
 class QualityMetrics(TypedDict):
     """Type definition for image quality metrics."""
+
     brightness: float
     contrast: float
     sharpness: float
@@ -100,6 +109,7 @@ class QualityMetrics(TypedDict):
 # Caption/Answer Types
 class CaptionResult(TypedDict):
     """Type definition for image captioning results."""
+
     caption: str
     confidence: float
     caption_type: str
@@ -110,6 +120,7 @@ class CaptionResult(TypedDict):
 
 class AnswerResult(TypedDict):
     """Type definition for question answering results."""
+
     answer: str
     confidence: float
     question: str
@@ -119,6 +130,7 @@ class AnswerResult(TypedDict):
 # Combined Features Types
 class ImageFeatures(TypedDict):
     """Type definition for combined image features."""
+
     objects: List[DetectedObject]
     colors: List[ExtractedColor]
     ocr_text: OCRResult
@@ -128,6 +140,7 @@ class ImageFeatures(TypedDict):
 # Main Analysis Result Types
 class AnalysisResult(TypedDict):
     """Type definition for complete analysis results."""
+
     image_path: str
     question: str
     timestamp: str
@@ -142,6 +155,7 @@ class AnalysisResult(TypedDict):
 # Configuration Types
 class AnalysisConfig(TypedDict):
     """Type definition for analysis configuration."""
+
     target_size: Tuple[int, int]
     normalize: bool
     object_detection: Dict[str, Any]
@@ -154,6 +168,7 @@ class AnalysisConfig(TypedDict):
 # System Info Types
 class SystemInfo(TypedDict):
     """Type definition for system information."""
+
     yolo_model: str
     blip_model: str
     device: str
@@ -169,39 +184,29 @@ __all__ = [
     "BoundingBox",
     "RGBColor",
     "Point",
-    
     # Detection types
     "DetectedObject",
     "DetectionResult",
-    
     # Color types
     "ExtractedColor",
     "ColorResult",
-    
     # OCR types
     "OCRWord",
     "OCRResult",
-    
     # Face types
     "DetectedFace",
     "FaceResult",
-    
     # Quality types
     "QualityMetrics",
-    
     # Caption/Answer types
     "CaptionResult",
     "AnswerResult",
-    
     # Feature types
     "ImageFeatures",
-    
     # Result types
     "AnalysisResult",
-    
     # Config types
     "AnalysisConfig",
-    
     # System types
     "SystemInfo",
 ]

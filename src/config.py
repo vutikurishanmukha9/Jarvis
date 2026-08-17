@@ -1,7 +1,12 @@
 """
 Configuration and constants for Jarvis Super-Intelligence System.
 """
-from typing import Dict, List, Any, Optional
+
+import os
+from pathlib import Path
+from typing import Any, Dict, Optional
+
+from pydantic import BaseModel, Field, field_validator
 
 # Supported Providers and Models
 PROVIDERS: Dict[str, Dict[str, Any]] = {
@@ -13,32 +18,23 @@ PROVIDERS: Dict[str, Dict[str, Any]] = {
             "google/gemini-2.0-flash-001",
             "meta-llama/llama-3.3-70b-instruct",
             "openai/gpt-4-turbo",
-            "deepseek/deepseek-chat"
+            "deepseek/deepseek-chat",
         ],
         "api_key_help": "Get your API key from https://openrouter.ai/keys",
-        "default_model": "openai/gpt-4o"
+        "default_model": "openai/gpt-4o",
     },
     "OpenAI": {
         "base_url": None,
-        "default_models": [
-            "gpt-4o",
-            "gpt-4o-mini",
-            "gpt-4-turbo",
-            "gpt-3.5-turbo"
-        ],
+        "default_models": ["gpt-4o", "gpt-4o-mini", "gpt-4-turbo", "gpt-3.5-turbo"],
         "api_key_help": "Get your API key from https://platform.openai.com/api-keys",
-        "default_model": "gpt-4o"
+        "default_model": "gpt-4o",
     },
     "Custom": {
         "base_url": "https://api.openai.com/v1",
-        "default_models": [
-            "gpt-4o",
-            "gpt-3.5-turbo",
-            "custom-model"
-        ],
+        "default_models": ["gpt-4o", "gpt-3.5-turbo", "custom-model"],
         "api_key_help": "Enter your custom OpenAI-compatible API key",
-        "default_model": "gpt-4o"
-    }
+        "default_model": "gpt-4o",
+    },
 }
 
 # System Personas
@@ -57,7 +53,7 @@ PERSONAS: Dict[str, Dict[str, str]] = {
             "4. When numerical analysis or data plotting is required, execute Python code to compute and generate plots.\n"
             "5. If information is missing or real-time context is required, perform Web Searches or Wikipedia lookups.\n"
             "6. Present your answers with executive clarity, structured markdown, bold key takeaways, and relevant citations."
-        )
+        ),
     },
     "Deep Research Analyst": {
         "tagline": "Rigor, Multi-Source Investigation & Deep Synthesis",
@@ -67,7 +63,7 @@ PERSONAS: Dict[str, Dict[str, str]] = {
             "and producing comprehensive, highly structured intelligence briefs.\n\n"
             "Always break down complex queries into sub-questions, verify claims, cite document sections or web sources, "
             "and highlight nuances, contradictions, and actionable insights."
-        )
+        ),
     },
     "Data & Vision Scientist": {
         "tagline": "Quantitative Modeling, Python Analytics & Computer Vision",
@@ -77,7 +73,7 @@ PERSONAS: Dict[str, Dict[str, str]] = {
             "Whenever tabular data (CSV, Excel) or mathematical problems are presented, write and execute Python code "
             "using pandas, numpy, matplotlib, or plotly to provide exact numerical facts and visual figures. "
             "For images, analyze object locations, counts, color palettes, and optical text."
-        )
+        ),
     },
     "Code Architect & Engineer": {
         "tagline": "Software Engineering, Algorithm Design & Debugging",
@@ -85,7 +81,7 @@ PERSONAS: Dict[str, Dict[str, str]] = {
             "You are the CODE ARCHITECT of JARVIS. "
             "You provide production-grade code, architectural diagrams, algorithmic solutions, and debugging analysis. "
             "Use the Python execution environment to verify logic, run tests, and demonstrate working code snippets."
-        )
+        ),
     },
     "Career & Talent Strategist": {
         "tagline": "Resume Optimization, ATS Scoring & Executive Career Strategy",
@@ -94,7 +90,7 @@ PERSONAS: Dict[str, Dict[str, str]] = {
             "You specialize in resume optimization, ATS compatibility audits, career trajectory forecasting, and interview strategy.\n\n"
             "Whenever a resume or job description is provided, use your ATS tools to identify keyword gaps, evaluate technical skills, "
             "recommend impactful quantified achievements, and draft tailored resume bullet points that maximize interview callbacks."
-        )
+        ),
     },
     "HR & Executive Outreach Specialist": {
         "tagline": "Recruiter Sourcing, Cold Email Campaigns & Multi-Stage Sequences",
@@ -104,8 +100,8 @@ PERSONAS: Dict[str, Dict[str, str]] = {
             "and multi-stage follow-up sequences.\n\n"
             "Draft compelling, personalized outreach with dynamic variables ({firstName}, {company}, {role}), "
             "design structured follow-up cadences, and review campaign recipient lists to maximize positive response rates."
-        )
-    }
+        ),
+    },
 }
 
 # Supported File Extensions
@@ -119,8 +115,6 @@ DEFAULT_CHUNK_OVERLAP = 150
 DEFAULT_TOP_K = 4
 DEFAULT_EMBEDDING_MODEL = "all-MiniLM-L6-v2"
 
-# Autonomous Personal Assistant Settings
-from pathlib import Path
 WORKSPACE_DIR = Path("workspace")
 WORKSPACE_DIR.mkdir(parents=True, exist_ok=True)
 ASSISTANT_DIR = Path("logs/assistant")
@@ -133,14 +127,10 @@ MAX_RETRY_PER_TASK = 3
 DEFAULT_ASSISTANT_NAME = "Jarvis"
 DEFAULT_USER_NAME = "Boss"
 
-# ==============================================================================
-# Pydantic Runtime Configuration Schema
-# ==============================================================================
-import os
-from pydantic import BaseModel, Field, field_validator
 
 class SystemConfig(BaseModel):
     """Pydantic validated runtime configuration for J.A.R.V.I.S."""
+
     api_provider: str = Field(default="OpenRouter", description="Active AI API Provider")
     api_key: str = Field(default="", description="API authentication key")
     model_name: str = Field(default="openai/gpt-4o", description="Target model identifier")
@@ -165,7 +155,6 @@ class SystemConfig(BaseModel):
     def from_env(cls) -> "SystemConfig":
         """Build validated config from environment variables."""
         provider = os.getenv("JARVIS_PROVIDER", "OpenRouter")
-        key = os.getenv("OPENROUTER_API_KEY") or os.getenv("OPENAI_API_KEY", "")
+        key = os.getenv("OPENROUTER_API_KEY") or os.getenv("OPENAI_API_KEY") or ""
         model = os.getenv("JARVIS_MODEL", "openai/gpt-4o")
         return cls(api_provider=provider, api_key=key, model_name=model)
-
