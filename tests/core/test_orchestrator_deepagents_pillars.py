@@ -41,9 +41,7 @@ def test_pillar_2_subagents_registration() -> None:
 
 def test_pillar_3_context_compaction() -> None:
     """Validate Pillar 3: Context pruning and sliding window management."""
-    chat_history = [
-        HumanMessage(content=f"Message {i}" * 50) for i in range(20)
-    ]
+    chat_history = [HumanMessage(content=f"Message {i}" * 50) for i in range(20)]
     pruned = SessionManager.prune_context_window(chat_history, max_messages=6, max_chars=2000)
     assert len(pruned) <= 6
 

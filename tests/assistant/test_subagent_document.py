@@ -62,8 +62,7 @@ def test_process_documents_and_build_vector_store() -> None:
     """Test vector store creation and retriever tool packaging."""
     mock_file = MockUploadedFile("guide.txt", b"Quantum computing uses qubits instead of bits.")
 
-    with patch("src.tools.document_tools.FAISS") as mock_faiss, \
-         patch("src.tools.document_tools.HuggingFaceEmbeddings"):
+    with patch("src.tools.document_tools.FAISS") as mock_faiss, patch("src.tools.document_tools.HuggingFaceEmbeddings"):
         mock_vectorstore = MagicMock()
         mock_faiss.from_texts.return_value = mock_vectorstore
 

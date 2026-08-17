@@ -285,7 +285,9 @@ class JarvisOrchestrator:
                 ]
             )
             agent = create_tool_calling_agent(self.llm, all_tools, prompt)
-            return AgentExecutor(agent=agent, tools=all_tools, verbose=True, handle_parsing_errors=True, max_iterations=10)
+            return AgentExecutor(
+                agent=agent, tools=all_tools, verbose=True, handle_parsing_errors=True, max_iterations=10
+            )
 
         raise RuntimeError("Neither create_deep_agent nor create_tool_calling_agent is available in the environment.")
 

@@ -20,6 +20,7 @@ from src.core.orchestrator import JarvisOrchestrator
 
 class CustomAgentState(TypedDict):
     """Pillar 1: Typed state schema with message accumulator reducer."""
+
     messages: Annotated[list[BaseMessage], add_messages]
     mission_status: str
 
@@ -32,8 +33,7 @@ def test_pillar_1_state_reducers() -> None:
     }
     # Simulate reducer update
     updated_messages = add_messages(
-        initial_state["messages"],
-        [AIMessage(content="Greetings! How can I assist you today?")]
+        initial_state["messages"], [AIMessage(content="Greetings! How can I assist you today?")]
     )
     assert len(updated_messages) == 2
     assert updated_messages[0].content == "Hello Jarvis"
@@ -50,7 +50,11 @@ def test_pillar_2_durability_resilience() -> None:
 
         orchestrator = JarvisOrchestrator(api_key="test_key")
         result = orchestrator.run("Test query", chat_history=[])
-        assert "error" in result["output"].lower() or "timeout" in result["output"].lower() or "apologize" in result["output"].lower()
+        assert (
+            "error" in result["output"].lower()
+            or "timeout" in result["output"].lower()
+            or "apologize" in result["output"].lower()
+        )
 
 
 def test_pillar_3_interrupts_configuration() -> None:
@@ -103,10 +107,12 @@ def test_pillar_5_custom_workflow_graph() -> None:
     builder.add_edge("synthesize", END)
 
     workflow = builder.compile()
-    res = workflow.invoke({
-        "messages": [HumanMessage(content="Start mission")],
-        "mission_status": "pending",
-    })
+    res = workflow.invoke(
+        {
+            "messages": [HumanMessage(content="Start mission")],
+            "mission_status": "pending",
+        }
+    )
 
     assert res["mission_status"] == "completed"
     assert len(res["messages"]) == 2
