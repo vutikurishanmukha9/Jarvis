@@ -1,15 +1,16 @@
-# J.A.R.V.I.S. — Autonomous Multimodal Intelligence & Personal Assistant System
+# J.A.R.V.I.S. — Autonomous Multi-Modal Agent Intelligence Platform
 
 [![Python](https://img.shields.io/badge/Python-3.12-blue.svg)](https://www.python.org/)
 [![Streamlit](https://img.shields.io/badge/Streamlit-1.51+-red.svg)](https://streamlit.io/)
-[![LangChain](https://img.shields.io/badge/LangChain-1.1+-green.svg)](https://www.langchain.com/)
-[![Tests](https://img.shields.io/badge/Tests-127%20Passed-brightgreen.svg)](tests/)
-[![YOLOv8](https://img.shields.io/badge/YOLOv8-Object%20Detection-orange.svg)](https://github.com/ultralytics/ultralytics)
+[![Deep Agents](https://img.shields.io/badge/Deep%20Agents-Core%20Harness-purple.svg)](https://docs.langchain.com/oss/python/deepagents/overview)
+[![LangGraph](https://img.shields.io/badge/LangGraph-StateGraph%20Engine-orange.svg)](https://github.com/langchain-ai/langgraph)
+[![Tests](https://img.shields.io/badge/Tests-205%20Passed%20(100%25)-brightgreen.svg)](tests/)
+[![YOLOv8](https://img.shields.io/badge/YOLOv8-Object%20Detection-yellow.svg)](https://github.com/ultralytics/ultralytics)
 [![FAISS](https://img.shields.io/badge/FAISS-Vector%20Search-blueviolet.svg)](https://github.com/facebookresearch/faiss)
 [![PyTorch](https://img.shields.io/badge/PyTorch-2.0+-ee4c2c.svg)](https://pytorch.org/)
 [![License](https://img.shields.io/badge/License-MIT-lightgrey.svg)](LICENSE)
 
-**J.A.R.V.I.S.** (Joint Autonomous Real-time Vision & Intelligence System) is an enterprise-grade autonomous AI personal assistant and multimodal super-intelligence platform. It breaks down complex human objectives into dependency-aware execution DAGs, autonomously runs multi-step workflows with semantic output verification, generates real-world deliverables (Microsoft Excel workbooks, Word documents, Markdown briefings, Python scripts), audits ATS resume compatibility, orchestrates personalized HR email campaigns with built-in safety controls, extracts optical telemetry with YOLOv8 & OCR, and manages persistent long-term memory across sessions.
+**J.A.R.V.I.S.** (Joint Autonomous Real-time Vision & Intelligence System) is an enterprise-grade autonomous AI super-intelligence platform. Powered by **Deep Agents** and **LangGraph**, it executes complex human objectives through dependency-aware execution DAGs, isolated specialist sub-agents, resilient sliding-window context management, modular skill discovery, sandboxed workspace operations, and multi-modal tool orchestration with live thought telemetry.
 
 ---
 
@@ -26,11 +27,19 @@ flowchart TD
         ProfileHub["6. Profile & Long-Term Memory"]
     end
 
-    subgraph Core_Runtime ["Core Agent Runtime (src/core/)"]
+    subgraph Deep_Agents_Harness ["Deep Agents & LangGraph Core Engine (src/core/)"]
         LLMProvider["ChatOpenAI Client (OpenRouter / OpenAI / Custom)"]
-        Tracer["ThoughtStepTracer (Latency, Input/Output Capture)"]
-        AgentExec["AgentExecutor (16 Integrated Tools)"]
+        Tracer["ThoughtStepTracer (Latency, Tool Input/Output Capture)"]
+        GraphRuntime["Deep Agents Compiled StateGraph"]
+        Checkpointer["MemorySaver (Thread-Scoped State Retention)"]
         SessionMgr["SessionManager (logs/sessions/*.json)"]
+    end
+
+    subgraph Specialized_Subagents ["Domain-Specific Sub-Agents (src/modules/ & src/assistant/)"]
+        CareerAgent["career_specialist (5-Pillar ATS + Taxonomy + Salary)"]
+        OutreachAgent["outreach_specialist (4-Stage Cadence + Recruiter Ingestion)"]
+        VisionAgent["vision_analyst (YOLOv8 + OCR + K-Means)"]
+        DocAgent["document_researcher (Universal Document FAISS RAG)"]
     end
 
     subgraph Autonomous_System ["Autonomous Goal Engine (src/assistant/)"]
@@ -40,35 +49,29 @@ flowchart TD
         WorkspaceTools["Workspace Tools (Path-Confined to workspace/)"]
     end
 
-    subgraph Specialized_Engines ["Specialized Domain Modules (src/modules/)"]
-        VisionEngine["Vision Subsystem (YOLOv8 + Tesseract OCR + K-Means)"]
-        CareerEngine["Career & ATS Engine (5-Pillar Scorer + Taxonomy + Estimator)"]
-        OutreachEngine["Outreach Engine (CSV Tag Parser + 4-Stage Cadence + Simulation Gate)"]
-    end
-
-    subgraph Tool_Suite ["General Purpose Tools (src/tools/)"]
-        DocTools["Universal Document RAG (FAISS + MiniLM Embeddings)"]
+    subgraph Tool_Suite ["Sandboxed Execution Tools (src/tools/)"]
         PyREPL["Controlled Python REPL (Import Blocklist + 30s Timeout + 50KB Buffer)"]
         WebTools["SSRF-Guarded Web Tools (Scheme Validation + Private IP Filter)"]
     end
 
-    subgraph Storage_Layer ["Persistent Storage & Deliverable Sandboxes"]
-        WorkspaceDir["workspace/ (.xlsx, .docx, .md, .py)"]
+    subgraph Storage_Layer ["Sandboxed Deliverable Storage"]
+        WorkspaceDir["workspace/ (.xlsx, .docx, .md, .py, .json, .csv)"]
         LogsDir["logs/ (sessions, assistant, outreach)"]
     end
 
-    ChatHub --> AgentExec
-    GoalHub --> GoalPlanner --> AutoRunner --> AgentExec
-    CareerHub --> CareerEngine
-    OutreachHub --> OutreachEngine
+    ChatHub --> GraphRuntime
+    GoalHub --> GoalPlanner --> AutoRunner --> GraphRuntime
+    CareerHub --> CareerAgent
+    OutreachHub --> OutreachAgent
     WorkspaceHub --> WorkspaceDir
     ProfileHub --> ProfileMgr
 
-    AgentExec --> Tracer
-    AgentExec --> LLMProvider
-    AgentExec --> Specialized_Engines
-    AgentExec --> Tool_Suite
-    AgentExec --> WorkspaceTools
+    GraphRuntime --> Tracer
+    GraphRuntime --> Checkpointer
+    GraphRuntime --> LLMProvider
+    GraphRuntime --> Specialized_Subagents
+    GraphRuntime --> Tool_Suite
+    GraphRuntime --> WorkspaceTools
 
     WorkspaceTools --> WorkspaceDir
     SessionMgr --> LogsDir
@@ -77,11 +80,32 @@ flowchart TD
 
 ---
 
+## Architectural Pillars
+
+J.A.R.V.I.S. is architected upon scoped pillars from **Deep Agents** and **LangGraph**:
+
+### The 6 Deep Agents Pillars
+1. **Planning**: Multi-step goal decomposition and Kahn's topological DAG dependency execution.
+2. **Subagents**: Isolated domain-specific subagents (`career_specialist`, `outreach_specialist`, `vision_analyst`, `document_researcher`).
+3. **Context**: Sliding-window context compaction, token budgeting, and head/tail conversation turn preservation.
+4. **Skills**: Modular skill registration, capability discovery, and dynamic ATS taxonomy matching.
+5. **Filesystem**: Sandboxed workspace file operations with native `.xlsx`, `.docx`, `.md`, `.json`, `.csv` artifact generation.
+6. **Tool Orchestration**: Multi-modal tool execution, sandbox isolation (Python REPL, Web SSRF guards, YOLOv8/OCR), and real-time `ThoughtStepTracer` telemetry.
+
+### The 5 LangGraph Pillars
+1. **State**: Strongly-typed state schemas (`TypedDict`) and `add_messages` message accumulator reducers.
+2. **Durability**: Fault-tolerant BSP Pregel execution loop with resilient fallback error recovery.
+3. **Interrupts**: Human-in-the-loop pause and resumption triggers (`interrupt_on`) for high-stakes actions.
+4. **Checkpoints**: Thread-scoped memory persistence and multi-turn state resumption via `MemorySaver`.
+5. **Custom Workflows**: Declarative `StateGraph` node routing, START/END boundaries, and conditional branching.
+
+---
+
 ## Core Capabilities
 
-### 1. Autonomous Goal Planning & Dependency-Aware Execution
+### 1. Autonomous Goal Planning & DAG Execution
 - **Topological DAG Decomposition**: Decomposes high-level instructions into executable Directed Acyclic Graphs (DAGs) resolved via Kahn's algorithm with cycle fallback protection.
-- **Artifact Store Pattern**: Subtasks receive only the outputs from their declared upstream dependencies rather than concatenating full history, eliminating token bloat and context drift.
+- **Artifact Store Pattern**: Subtasks receive outputs only from their declared upstream dependencies rather than concatenating full history, eliminating token bloat and context drift.
 - **Semantic Output Verification**: After tool execution, the engine evaluates whether deliverables satisfy instruction requirements before proceeding, triggering targeted self-correction retries when outputs fall short.
 - **Real-Time Telemetry**: Streams live step progress, execution latency, and intermediate artifacts in the **Autonomous Mission Control** dashboard.
 
@@ -132,7 +156,7 @@ flowchart TD
 
 ---
 
-## Security Architecture & Defensive Guards
+## Security Architecture & Defensive Controls
 
 | Layer | Threat Vector | Implemented Defensive Control |
 | :--- | :--- | :--- |
@@ -145,22 +169,10 @@ flowchart TD
 
 ---
 
-## UI Architecture
-
-The interface features a frosted glass design system with 6 dedicated workspaces:
-1. **Intelligence Chat**: Multimodal conversational interface with Thought Telemetry, Vision cards, and Python REPL.
-2. **Autonomous Mission Control**: Goal assignment input, quick presets, real-time checklist progress, and executive deliverable synthesis.
-3. **Career & ATS Studio**: Resume audit, ATS compatibility score gauges, missing keyword chips, compensation estimates, and one-click tailored resume generation.
-4. **HR Outreach & Campaigns**: Dynamic spreadsheet recipient parsing, live per-recipient previewer, 4-stage follow-up cadence generator, and campaign execution telemetry with live approval gates.
-5. **Workspace Files**: Live file explorer to preview, inspect, and download generated `.xlsx`, `.docx`, `.md`, `.csv`, and `.py` files.
-6. **Personal Profile & Memory**: Customize user moniker, role, directives, and manage long-term memories with confidence indicators.
-
----
-
 ## Quick Start
 
 ### 1. Prerequisites
-- Python 3.10 - 3.12 (Python 3.12 recommended)
+- Python 3.10 – 3.12 (Python 3.12 recommended)
 - Tesseract OCR (optional, for OCR image text extraction)
 
 ### 2. Installation
@@ -189,16 +201,16 @@ Open your browser at `http://localhost:8501`.
 
 Run the full production test suite:
 ```bash
-pytest tests/ -v
+pytest -v
 ```
 
-### Modular Architecture (31 Dedicated Test Files):
-- **`tests/core/`**: Configuration, Pydantic runtime config, Pydantic V2 domain schemas, retry policies with backoff, sliding-window context compression, multi-session persistence, thought step tracer callbacks, and orchestrator tool aggregation ([test_config.py](tests/core/test_config.py), [test_schemas.py](tests/core/test_schemas.py), [test_retry_utils.py](tests/core/test_retry_utils.py), [test_context_pruning.py](tests/core/test_context_pruning.py), [test_session_manager.py](tests/core/test_session_manager.py), [test_thought_tracer.py](tests/core/test_thought_tracer.py), [test_orchestrator.py](tests/core/test_orchestrator.py)).
-- **`tests/assistant/`**: Goal decomposition schemas, Kahn's topological sort across complex DAGs, autonomous runner artifact store, mission governor timeouts & retry limits, semantic output verification, memory CRUD lifecycle, and path-confined workspace operations ([test_goal_planner.py](tests/assistant/test_goal_planner.py), [test_topological_sort.py](tests/assistant/test_topological_sort.py), [test_autonomous_runner.py](tests/assistant/test_autonomous_runner.py), [test_autonomous_governor.py](tests/assistant/test_autonomous_governor.py), [test_output_verification.py](tests/assistant/test_output_verification.py), [test_profile_manager.py](tests/assistant/test_profile_manager.py), [test_workspace_tools.py](tests/assistant/test_workspace_tools.py)).
-- **`tests/tools/`**: Controlled Python executor with dangerous import blocking, SSRF-guarded web scraper with private IP filters, multi-format document parsers (TXT, CSV, DOCX, XLSX, JSON, PY), and MD5 cache hashing ([test_python_executor.py](tests/tools/test_python_executor.py), [test_python_security.py](tests/tools/test_python_security.py), [test_web_tools.py](tests/tools/test_web_tools.py), [test_web_security_ssrf.py](tests/tools/test_web_security_ssrf.py), [test_document_parsers.py](tests/tools/test_document_parsers.py), [test_document_hash_rag.py](tests/tools/test_document_hash_rag.py)).
-- **`tests/modules/`**: FAISS IndexFlatIP vector retrieval with exact L2 cosine ranking, safe PyTorch tensor embedding storage without pickle, 5-pillar ATS scoring formulas, section-aware field weights, 13-domain skill taxonomy, heuristic compensation estimation, recruiter spreadsheet normalization, 4-stage cadence generation, simulated email delivery with Excel audit exports, and vision quality & K-Means clustering ([test_career_faiss_index.py](tests/modules/test_career_faiss_index.py), [test_safe_tensor_serialization.py](tests/modules/test_safe_tensor_serialization.py), [test_ats_scorer.py](tests/modules/test_ats_scorer.py), [test_ats_helpers.py](tests/modules/test_ats_helpers.py), [test_skill_extractor.py](tests/modules/test_skill_extractor.py), [test_career_bridge.py](tests/modules/test_career_bridge.py), [test_outreach_campaign.py](tests/modules/test_outreach_campaign.py), [test_outreach_dispatcher.py](tests/modules/test_outreach_dispatcher.py), [test_outreach_bridge.py](tests/modules/test_outreach_bridge.py), [test_vision_bridge.py](tests/modules/test_vision_bridge.py), [test_vision_algorithms.py](tests/modules/test_vision_algorithms.py)).
+### Test Coverage Highlights (205 Tests Across 45+ Isolated Test Files — 100% Pass Rate):
+- **Core Engine & Architecture**: Deep Agents 6-pillar verification ([test_orchestrator_deepagents_pillars.py](tests/core/test_orchestrator_deepagents_pillars.py)), LangGraph 5-pillar verification ([test_langgraph_pillars.py](tests/core/test_langgraph_pillars.py)), Deep Agents graph execution ([test_orchestrator_deepagents.py](tests/core/test_orchestrator_deepagents.py)), sub-agent routing ([test_orchestrator_subagents_routing.py](tests/core/test_orchestrator_subagents_routing.py)), ThoughtStep tracer telemetry ([test_orchestrator_tracer_deep.py](tests/core/test_orchestrator_tracer_deep.py)), error resilience ([test_orchestrator_resilience.py](tests/core/test_orchestrator_resilience.py)), sliding-window context compression ([test_context_pruning.py](tests/core/test_context_pruning.py)), session management ([test_session_manager.py](tests/core/test_session_manager.py)), and Pydantic schemas ([test_schemas.py](tests/core/test_schemas.py)).
+- **Autonomous Mission Control**: Goal decomposition schemas ([test_goal_planner.py](tests/assistant/test_goal_planner.py)), DAG topological sorting ([test_goal_planner_dag.py](tests/assistant/test_goal_planner_dag.py), [test_topological_sort.py](tests/assistant/test_topological_sort.py)), mission runner execution ([test_autonomous_runner_execution.py](tests/assistant/test_autonomous_runner_execution.py)), mission governor timeouts ([test_autonomous_governor.py](tests/assistant/test_autonomous_governor.py)), output verification ([test_output_verification.py](tests/assistant/test_output_verification.py)), memory CRUD lifecycle ([test_profile_manager.py](tests/assistant/test_profile_manager.py)), and document deliverable generation ([test_workspace_doc_generation.py](tests/assistant/test_workspace_doc_generation.py)).
+- **Specialized Sub-Agents & Modules**: Career specialist ([test_subagent_career.py](tests/assistant/test_subagent_career.py), [test_ats_scorer.py](tests/modules/test_ats_scorer.py), [test_career_bridge.py](tests/modules/test_career_bridge.py)), outreach specialist ([test_subagent_outreach.py](tests/assistant/test_subagent_outreach.py), [test_outreach_dispatcher.py](tests/modules/test_outreach_dispatcher.py)), vision analyst ([test_subagent_vision.py](tests/assistant/test_subagent_vision.py), [test_vision_algorithms.py](tests/modules/test_vision_algorithms.py), [test_vision_bridge.py](tests/modules/test_vision_bridge.py)), and document researcher ([test_subagent_document.py](tests/assistant/test_subagent_document.py), [test_career_faiss_index.py](tests/modules/test_career_faiss_index.py)).
+- **Sandboxed Execution & Security**: Controlled Python REPL thread safety ([test_python_sandbox_thread_safety.py](tests/tools/test_python_sandbox_thread_safety.py)), Python dangerous import blocking ([test_python_security.py](tests/tools/test_python_security.py)), SSRF web security validation ([test_web_security_ssrf.py](tests/tools/test_web_security_ssrf.py), [test_web_search_resilience.py](tests/tools/test_web_search_resilience.py)), document parsing ([test_document_parsers.py](tests/tools/test_document_parsers.py)), and SHA-256 caching ([test_document_hash_caching.py](tests/tools/test_document_hash_caching.py)).
 
 ---
 
 ## License
-Distributed under the MIT License. Built with Streamlit, LangChain, PyTorch, YOLOv8, and FAISS.
+Distributed under the MIT License. Built with Streamlit, Deep Agents, LangGraph, PyTorch, YOLOv8, and FAISS.

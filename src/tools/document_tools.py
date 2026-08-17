@@ -24,6 +24,7 @@ except ImportError:
     from langchain_core.tools import BaseTool
 
 logger = logging.getLogger(__name__)
+logging.getLogger("PyPDF2").setLevel(logging.ERROR)
 
 
 def get_files_hash(uploaded_files: List[Any]) -> str:

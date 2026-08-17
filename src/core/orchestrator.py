@@ -1,21 +1,37 @@
 """
 Autonomous Multi-Modal Agent Orchestrator for Jarvis Super-Intelligence.
-Coordinates tools (Document RAG, Vision, Python Sandbox, Web Research) with Thought-Step Tracing.
+Powered by Deep Agents & LangGraph with Hierarchical Sub-Agents, Live Thought-Step Tracing,
+and Sliding-Window Context Compaction.
 """
+
+from __future__ import annotations
 
 import logging
 import time
 from typing import Any, Dict, List, Optional
 
 from langchain_core.callbacks import BaseCallbackHandler
-from langchain_core.messages import BaseMessage
-from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
+from langchain_core.messages import AIMessage, BaseMessage, HumanMessage
 from langchain_openai import ChatOpenAI
 
 try:
-    from langchain_classic.agents import AgentExecutor, create_tool_calling_agent
+    from deepagents import SubAgent, create_deep_agent
 except ImportError:
-    from langchain.agents import AgentExecutor, create_tool_calling_agent
+    create_deep_agent = None  # type: ignore[assignment, misc]
+    SubAgent = None  # type: ignore[assignment, misc]
+
+try:
+    from langchain_classic.agents import AgentExecutor, create_tool_calling_agent
+    from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
+except ImportError:
+    try:
+        from langchain.agents import AgentExecutor, create_tool_calling_agent
+        from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
+    except ImportError:
+        AgentExecutor = None  # type: ignore[assignment, misc]
+        create_tool_calling_agent = None  # type: ignore[assignment, misc]
+        ChatPromptTemplate = None  # type: ignore[assignment, misc]
+        MessagesPlaceholder = None  # type: ignore[assignment, misc]
 
 from ..assistant.profile_manager import ProfileManager
 from ..assistant.workspace_tools import get_workspace_tools
@@ -33,7 +49,8 @@ logger = logging.getLogger(__name__)
 class ThoughtStepTracer(BaseCallbackHandler):
     """Callback to capture the agent's live reasoning steps and tool executions."""
 
-    def __init__(self):
+    def __init__(self) -> None:
+        super().__init__()
         self.steps: List[Dict[str, Any]] = []
 
     def on_tool_start(self, serialized: Dict[str, Any], input_str: str, **kwargs: Any) -> None:
@@ -56,7 +73,10 @@ class ThoughtStepTracer(BaseCallbackHandler):
 
 
 class JarvisOrchestrator:
-    """Orchestrates Jarvis agent execution, tool integration, and thought tracking."""
+    """
+    Enterprise Orchestrator for Jarvis Super-Intelligence.
+    Integrates Deep Agents multi-agent harness with specialized domain sub-agents.
+    """
 
     def __init__(
         self,
@@ -68,7 +88,9 @@ class JarvisOrchestrator:
         persona: str = "JARVIS Supreme",
         deep_research_mode: bool = False,
         document_tool: Optional[Any] = None,
-    ):
+        checkpointer: Optional[Any] = None,
+        interrupt_on: Optional[Dict[str, Any]] = None,
+    ) -> None:
         self.api_provider = api_provider
         self.api_key = api_key
         self.model_name = model_name
@@ -77,11 +99,19 @@ class JarvisOrchestrator:
         self.persona = persona
         self.deep_research_mode = deep_research_mode
         self.document_tool = document_tool
+        self.checkpointer = checkpointer
+        self.interrupt_on = interrupt_on
 
-        # Construct Agent
+        # Construct Agent Components
         self.llm = self._init_llm()
         self.tools = self._collect_tools()
-        self.agent_executor = self._build_executor()
+        self.subagents = self._build_subagents()
+        self.agent_graph = self._build_agent_graph()
+
+    @property
+    def agent_executor(self) -> Any:
+        """Backwards-compatibility accessor for the compiled agent graph/executor."""
+        return self.agent_graph
 
     def _init_llm(self) -> ChatOpenAI:
         """Initialize the ChatOpenAI client with custom provider base URL if applicable."""
@@ -97,7 +127,7 @@ class JarvisOrchestrator:
         return ChatOpenAI(**kwargs)
 
     def _collect_tools(self) -> List[Any]:
-        """Aggregate all available tools: web search, python REPL, vision, workspace files, and documents."""
+        """Aggregate primary orchestrator tools: Python REPL, Web Research, Vision, and Workspace Tools."""
         tools: List[Any] = []
 
         # 1. Python Code Execution Sandbox
@@ -124,8 +154,85 @@ class JarvisOrchestrator:
 
         return tools
 
-    def _build_executor(self) -> AgentExecutor:
-        """Build the LangChain tool-calling AgentExecutor with personal assistant context."""
+    def _build_subagents(self) -> List[Any]:
+        """Assemble domain-specific sub-agents with isolated contexts."""
+        if SubAgent is None:
+            return []
+
+        subagents: List[Any] = []
+
+        # 1. Career & ATS Optimization Sub-Agent
+        career_tools = get_career_tools()
+        if career_tools:
+            subagents.append(
+                SubAgent(
+                    name="career_specialist",
+                    description=(
+                        "Specialized in resume parsing, ATS scoring, JD matching, salary estimation, "
+                        "and career guidance."
+                    ),
+                    tools=career_tools,
+                    system_prompt=(
+                        "You are the Career Intelligence Specialist for Jarvis. "
+                        "Analyze resumes, calculate ATS compatibility scores against job descriptions, "
+                        "and generate optimized career recommendations."
+                    ),
+                )
+            )
+
+        # 2. HR Outreach & Recruitment Campaign Sub-Agent
+        outreach_tools = get_outreach_tools()
+        if outreach_tools:
+            subagents.append(
+                SubAgent(
+                    name="outreach_specialist",
+                    description=(
+                        "Specialized in candidate prospecting, cold email sequence crafting, "
+                        "and HR recruitment outreach."
+                    ),
+                    tools=outreach_tools,
+                    system_prompt=(
+                        "You are the HR Outreach Specialist for Jarvis. "
+                        "Parse candidate lead sheets, compose high-converting personalized email sequences, "
+                        "and manage recruitment pipelines."
+                    ),
+                )
+            )
+
+        # 3. Vision & Image Analysis Sub-Agent
+        vision_tools = get_vision_tools()
+        if vision_tools:
+            subagents.append(
+                SubAgent(
+                    name="vision_analyst",
+                    description="Specialized in YOLOv8 visual object detection, OCR reading, and image analysis.",
+                    tools=vision_tools,
+                    system_prompt=(
+                        "You are the Vision Intelligence Analyst for Jarvis. "
+                        "Process uploaded images, detect objects with bounding boxes, extract text via OCR, "
+                        "and provide visual intelligence."
+                    ),
+                )
+            )
+
+        # 4. Document RAG & Knowledge Retrieval Sub-Agent
+        if self.document_tool:
+            subagents.append(
+                SubAgent(
+                    name="document_researcher",
+                    description="Specialized in deep semantic search and contextual question-answering over uploaded files.",
+                    tools=[self.document_tool],
+                    system_prompt=(
+                        "You are the Document Research Specialist for Jarvis. "
+                        "Search through uploaded PDFs and document chunks to extract factual answers with citations."
+                    ),
+                )
+            )
+
+        return subagents
+
+    def _assemble_system_prompt(self) -> str:
+        """Compose the full system prompt from personas, memory, and research modes."""
         persona_data = PERSONAS.get(self.persona, PERSONAS["JARVIS Supreme"])
         system_prompt = persona_data["prompt"]
 
@@ -140,17 +247,47 @@ class JarvisOrchestrator:
                 "3. Synthesize the findings into an executive-level report with structured headings, key takeaways, and explicit citations."
             )
 
-        prompt = ChatPromptTemplate.from_messages(
-            [
-                ("system", system_prompt),
-                MessagesPlaceholder(variable_name="chat_history"),
-                ("human", "{input}"),
-                MessagesPlaceholder(variable_name="agent_scratchpad"),
-            ]
-        )
+        return system_prompt
 
-        agent = create_tool_calling_agent(self.llm, self.tools, prompt)
-        return AgentExecutor(agent=agent, tools=self.tools, verbose=True, handle_parsing_errors=True, max_iterations=10)
+    def _build_agent_graph(self) -> Any:
+        """Construct the agent runtime (Deep Agents harness with fallback to classic AgentExecutor)."""
+        system_prompt = self._assemble_system_prompt()
+
+        # Primary: Deep Agents Graph
+        if create_deep_agent is not None:
+            try:
+                kwargs: Dict[str, Any] = {
+                    "model": self.llm,
+                    "tools": self.tools,
+                    "system_prompt": system_prompt,
+                    "subagents": self.subagents if self.subagents else None,
+                }
+                if self.checkpointer is not None:
+                    kwargs["checkpointer"] = self.checkpointer
+                if self.interrupt_on is not None:
+                    kwargs["interrupt_on"] = self.interrupt_on
+                return create_deep_agent(**kwargs)
+            except Exception as e:
+                logger.warning(f"Failed to assemble DeepAgent graph, falling back to legacy executor: {e}")
+
+        # Fallback: Classic Tool-Calling AgentExecutor
+        if create_tool_calling_agent is not None and ChatPromptTemplate is not None:
+            all_tools = list(self.tools)
+            all_tools.extend(get_career_tools())
+            all_tools.extend(get_outreach_tools())
+
+            prompt = ChatPromptTemplate.from_messages(
+                [
+                    ("system", system_prompt),
+                    MessagesPlaceholder(variable_name="chat_history"),
+                    ("human", "{input}"),
+                    MessagesPlaceholder(variable_name="agent_scratchpad"),
+                ]
+            )
+            agent = create_tool_calling_agent(self.llm, all_tools, prompt)
+            return AgentExecutor(agent=agent, tools=all_tools, verbose=True, handle_parsing_errors=True, max_iterations=10)
+
+        raise RuntimeError("Neither create_deep_agent nor create_tool_calling_agent is available in the environment.")
 
     def run(self, user_input: str, chat_history: List[BaseMessage]) -> Dict[str, Any]:
         """
@@ -159,11 +296,53 @@ class JarvisOrchestrator:
         """
         tracer = ThoughtStepTracer()
         bounded_history = SessionManager.prune_context_window(chat_history)
+        output_text = ""
+
         try:
-            response = self.agent_executor.invoke(
-                {"input": user_input, "chat_history": bounded_history}, config={"callbacks": [tracer]}
-            )
-            output_text = response.get("output", "I processed your request, but generated an empty response.")
+            # Case 1: LangGraph / Deep Agents Compiled Graph
+            if hasattr(self.agent_graph, "invoke") and not isinstance(self.agent_graph, AgentExecutor):
+                messages: List[BaseMessage] = list(bounded_history)
+                messages.append(HumanMessage(content=user_input))
+
+                response = self.agent_graph.invoke(
+                    {"messages": messages},
+                    config={"callbacks": [tracer]},
+                )
+
+                # Extract final output from returned messages
+                if isinstance(response, dict) and "messages" in response:
+                    resp_messages = response["messages"]
+                    for msg in reversed(resp_messages):
+                        if isinstance(msg, AIMessage) and msg.content:
+                            if isinstance(msg.content, str):
+                                output_text = msg.content
+                            elif isinstance(msg.content, list):
+                                output_text = "\n".join(
+                                    block.get("text", "") if isinstance(block, dict) else str(block)
+                                    for block in msg.content
+                                )
+                            break
+                    if not output_text and resp_messages:
+                        last_msg = resp_messages[-1]
+                        output_text = getattr(last_msg, "content", str(last_msg))
+                elif isinstance(response, str):
+                    output_text = response
+                elif hasattr(response, "content"):
+                    output_text = str(response.content)
+                else:
+                    output_text = str(response)
+
+            # Case 2: Classic LangChain AgentExecutor
+            else:
+                response = self.agent_graph.invoke(
+                    {"input": user_input, "chat_history": bounded_history},
+                    config={"callbacks": [tracer]},
+                )
+                output_text = response.get("output", "I processed your request, but generated an empty response.")
+
+            if not output_text:
+                output_text = "I processed your request, but generated an empty response."
+
         except Exception as e:
             logger.error(f"Agent Execution Error: {str(e)}", exc_info=True)
             output_text = f"An error occurred during agent processing: {str(e)}"
@@ -173,4 +352,9 @@ class JarvisOrchestrator:
         figures = get_and_clear_figure_buffer()
         annotated_imgs = get_and_clear_annotated_images()
 
-        return {"output": output_text, "steps": tracer.steps, "figures": figures, "annotated_images": annotated_imgs}
+        return {
+            "output": output_text,
+            "steps": tracer.steps,
+            "figures": figures,
+            "annotated_images": annotated_imgs,
+        }

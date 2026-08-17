@@ -7,14 +7,14 @@ from tests.conftest import MockUploadedFile
 
 
 def test_file_hash_deterministic():
-    """Verify identical files always produce identical MD5 hashes."""
+    """Verify identical files always produce identical SHA-256 hashes."""
     f1 = MockUploadedFile("doc.txt", b"Exact content")
     f2 = MockUploadedFile("doc.txt", b"Exact content")
 
     hash1 = get_files_hash([f1])
     hash2 = get_files_hash([f2])
     assert hash1 == hash2
-    assert len(hash1) == 32  # Standard MD5 hex digest length
+    assert len(hash1) == 64  # Standard SHA-256 hex digest length
 
 
 def test_file_hash_content_mutation_sensitivity():
@@ -36,6 +36,6 @@ def test_file_hash_name_mutation_sensitivity():
 
 
 def test_file_hash_empty_list():
-    """Verify empty list of files produces an MD5 hash gracefully."""
+    """Verify empty list of files produces a SHA-256 hash gracefully."""
     empty_hash = get_files_hash([])
-    assert len(empty_hash) == 32
+    assert len(empty_hash) == 64
