@@ -114,6 +114,11 @@ class JarvisOrchestrator:
         """Backwards-compatibility accessor for the compiled agent graph/executor."""
         return self.agent_graph
 
+    @agent_executor.setter
+    def agent_executor(self, value: Any) -> None:
+        """Setter for agent_executor supporting legacy executor replacement."""
+        self.agent_graph = value
+
     def _init_llm(self) -> ChatOpenAI:
         """Initialize the ChatOpenAI client with custom provider base URL if applicable."""
         kwargs: Dict[str, Any] = {

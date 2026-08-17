@@ -179,9 +179,10 @@ def browser_click_element(selector_or_text: str) -> str:
         return f"Element '{selector_or_text}' not found on current page ({session.current_url})."
 
     # If it's a link, follow it
-    href = element.get("href")
-    if href:
-        target_url = urljoin(session.current_url, href)
+    href_val = element.get("href")
+    if href_val:
+        href_str = href_val if isinstance(href_val, str) else str(href_val[0])
+        target_url = urljoin(session.current_url, href_str)
         return navigate_to_url.invoke({"url": target_url})
 
     return f"Clicked element <{element.name}> successfully on {session.current_url}."
