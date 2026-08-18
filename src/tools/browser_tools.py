@@ -20,6 +20,7 @@ from urllib.parse import urljoin
 from bs4 import BeautifulSoup
 from langchain_core.tools import BaseTool, tool
 
+from .content_sanitizer import sanitize_scraped_content
 from .web_tools import _validate_url
 
 logger = logging.getLogger(__name__)
@@ -246,6 +247,7 @@ def browser_submit_form(form_id_or_action: Optional[str] = None) -> str:
 def browser_scrape_page(max_length: int = 4000) -> str:
     """
     Extract clean readable text and structured markdown content from the currently active web page.
+    Automatically applies prompt injection sanitization, stripping hidden HTML comments and concealed text.
 
     Args:
         max_length: Maximum characters of text content to return (default 4000).
@@ -254,19 +256,8 @@ def browser_scrape_page(max_length: int = 4000) -> str:
     if not session.page_content:
         return "Error: No active web page loaded. Please call navigate_to_url first."
 
-    soup = BeautifulSoup(session.page_content, "html.parser")
-
-    # Remove script and style tags
-    for tag in soup(["script", "style", "noscript", "svg", "header", "footer"]):
-        tag.decompose()
-
-    text = soup.get_text(separator="\n", strip=True)
-    lines = [line.strip() for line in text.splitlines() if line.strip()]
-    cleaned_text = "\n".join(lines)
-
-    truncated = cleaned_text[:max_length]
-    suffix = "\n...[Content Truncated]" if len(cleaned_text) > max_length else ""
-    return f"Page Content for '{session.page_title}' ({session.current_url}):\n\n{truncated}{suffix}"
+    sanitized = sanitize_scraped_content(session.page_content, max_length=max_length)
+    return f"Page Content for '{session.page_title}' ({session.current_url}):\n\n{sanitized}"
 
 
 @tool

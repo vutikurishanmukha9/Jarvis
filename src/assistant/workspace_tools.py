@@ -19,12 +19,34 @@ logger = logging.getLogger(__name__)
 
 
 def _resolve_workspace_path(path_str: str) -> Path:
-    """Resolve a relative path, rejecting every attempt to leave ``WORKSPACE_DIR``."""
+    """Resolve a relative path, strictly rejecting every attempt to leave ``WORKSPACE_DIR``."""
     if not isinstance(path_str, str) or not path_str.strip():
         raise ValueError("A non-empty workspace-relative path is required.")
 
-    candidate = Path(path_str.strip())
+    clean_path = path_str.strip()
+
+    # Reject null bytes (common filesystem bypass technique)
+    if "\x00" in clean_path:
+        logger.warning(f"Path traversal security block: Null byte detected in path '{clean_path}'")
+        raise ValueError("Null byte injection detected in path.")
+
+    # Reject drive letters (C:, D:) and UNC network paths (\\server\share)
+    if re.search(r"^[a-zA-Z]:", clean_path) or clean_path.startswith(("\\\\", "//")):
+        logger.warning(f"Path traversal security block: Drive letter or UNC path detected in '{clean_path}'")
+        raise ValueError("Drive letters and UNC network paths are not permitted in workspace.")
+
+    # Reject suspicious multi-dot obfuscation (e.g., .../ or ..../)
+    if re.search(r"\.{3,}", clean_path):
+        logger.warning(f"Path traversal security block: Multi-dot sequence detected in '{clean_path}'")
+        raise ValueError("Path must remain inside the workspace.")
+
+    # Reject excessive path length
+    if len(clean_path) > 255:
+        raise ValueError("Path exceeds maximum permitted length (255 characters).")
+
+    candidate = Path(clean_path)
     if candidate.is_absolute():
+        logger.warning(f"Path traversal security block: Absolute path attempted '{clean_path}'")
         raise ValueError("Absolute paths are not allowed in the workspace.")
 
     workspace_resolved = WORKSPACE_DIR.resolve()
@@ -32,6 +54,7 @@ def _resolve_workspace_path(path_str: str) -> Path:
     try:
         target.relative_to(workspace_resolved)
     except ValueError as exc:
+        logger.warning(f"Path traversal security block: Path '{clean_path}' resolves outside workspace boundary.")
         raise ValueError("Path must remain inside the workspace.") from exc
     return target
 

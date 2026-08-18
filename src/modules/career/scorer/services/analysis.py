@@ -3,6 +3,7 @@ import re
 from typing import Any, Dict, List, Tuple
 
 import numpy as np
+import pandas as pd
 from sentence_transformers import util
 
 from src.modules.career.scorer.config import MATCHING_WEIGHTS, MIN_TEXT_LENGTH, TOP_MATCHES
@@ -136,10 +137,18 @@ def analyze_resume(resume_text: str) -> Tuple[str, List[Tuple[str, float]], floa
 
         # Predict base salary, then adjust by job role
         try:
-            if hasattr(model_manager.salary_model, "n_features_in_") and model_manager.salary_model.n_features_in_ == 1:
-                base_salary = float(model_manager.salary_model.predict(np.array([[features["years_experience"]]]))[0])
+            model = model_manager.salary_model
+            if hasattr(model, "feature_names_in_"):
+                col_names = model.feature_names_in_
+                if len(col_names) == 1:
+                    input_data = pd.DataFrame([[features["years_experience"]]], columns=col_names)
+                else:
+                    input_data = pd.DataFrame(feature_vector, columns=col_names[: feature_vector.shape[1]])
+                base_salary = float(model.predict(input_data)[0])
+            elif hasattr(model, "n_features_in_") and model.n_features_in_ == 1:
+                base_salary = float(model.predict(np.array([[features["years_experience"]]]))[0])
             else:
-                base_salary = float(model_manager.salary_model.predict(feature_vector)[0])
+                base_salary = float(model.predict(feature_vector)[0])
         except Exception as ex:
             logger.warning(f"Model salary prediction fallback used: {ex}")
             base_salary = float(

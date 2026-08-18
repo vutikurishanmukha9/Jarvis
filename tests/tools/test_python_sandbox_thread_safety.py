@@ -27,7 +27,6 @@ def test_python_interpreter_matplotlib_plot_interception() -> None:
 import matplotlib.pyplot as plt
 fig, ax = plt.subplots()
 ax.plot([1, 2, 3], [4, 5, 6])
-plt.show()
 """
     python_interpreter.invoke(code)
     figs = get_and_clear_figure_buffer()

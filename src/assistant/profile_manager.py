@@ -63,32 +63,40 @@ class ProfileManager:
 
     @staticmethod
     def save_profile(profile_data: Dict[str, Any]) -> bool:
-        """Save user profile to disk."""
-        try:
-            with _profile_lock:
-                temporary_path = PROFILE_FILE.with_suffix(".tmp")
-                with open(temporary_path, "w", encoding="utf-8") as f:
-                    json.dump(profile_data, f, indent=2, ensure_ascii=False)
-                temporary_path.replace(PROFILE_FILE)
-            return True
-        except Exception as e:
-            logger.error(f"Error saving profile: {str(e)}")
+        """Save user profile to disk with retry resilience against Windows file locks."""
+        with _profile_lock:
+            for attempt in range(5):
+                try:
+                    temporary_path = PROFILE_FILE.with_suffix(".tmp")
+                    with open(temporary_path, "w", encoding="utf-8") as f:
+                        json.dump(profile_data, f, indent=2, ensure_ascii=False)
+                    temporary_path.replace(PROFILE_FILE)
+                    return True
+                except Exception as e:
+                    if attempt == 4:
+                        logger.error(f"Error saving profile: {str(e)}")
+                        return False
+                    time.sleep(0.05)
             return False
 
     # --- Memory Management ---
 
     @staticmethod
     def _save_memories(memories: List[Dict[str, Any]]) -> bool:
-        """Internal: persist the full memory list to disk."""
-        try:
-            with _profile_lock:
-                temporary_path = MEMORY_FILE.with_suffix(".tmp")
-                with open(temporary_path, "w", encoding="utf-8") as f:
-                    json.dump(memories, f, indent=2, ensure_ascii=False)
-                temporary_path.replace(MEMORY_FILE)
-            return True
-        except Exception as e:
-            logger.error(f"Error saving memories: {str(e)}")
+        """Internal: persist the full memory list to disk with retry resilience against Windows file locks."""
+        with _profile_lock:
+            for attempt in range(5):
+                try:
+                    temporary_path = MEMORY_FILE.with_suffix(".tmp")
+                    with open(temporary_path, "w", encoding="utf-8") as f:
+                        json.dump(memories, f, indent=2, ensure_ascii=False)
+                    temporary_path.replace(MEMORY_FILE)
+                    return True
+                except Exception as e:
+                    if attempt == 4:
+                        logger.error(f"Error saving memories: {str(e)}")
+                        return False
+                    time.sleep(0.05)
             return False
 
     @staticmethod

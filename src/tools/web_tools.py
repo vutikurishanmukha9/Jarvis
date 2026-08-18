@@ -17,6 +17,8 @@ from bs4 import BeautifulSoup
 from langchain_community.tools import DuckDuckGoSearchRun
 from langchain_core.tools import BaseTool, tool
 
+from .content_sanitizer import sanitize_scraped_content
+
 logger = logging.getLogger(__name__)
 
 # Security constants
@@ -179,21 +181,10 @@ def read_webpage_content(url: str) -> str:
         text = content.decode("utf-8", errors="ignore")
 
         soup = BeautifulSoup(text, "html.parser")
-
-        # Remove script and style elements
-        for script in soup(["script", "style", "nav", "footer", "header", "aside"]):
-            script.decompose()
-
         title = soup.title.string.strip() if soup.title and soup.title.string else url
-        paragraphs = [
-            p.get_text().strip() for p in soup.find_all(["p", "h1", "h2", "h3", "li"]) if p.get_text().strip()
-        ]
+        sanitized_content = sanitize_scraped_content(text, max_length=4000)
 
-        page_content = "\n\n".join(paragraphs[:40])  # limit to top paragraphs
-        if not page_content:
-            page_content = soup.get_text(separator="\n", strip=True)[:3000]
-
-        return f"=== Web Page: {title} ===\nURL: {url}\n\n{page_content[:4000]}"
+        return f"=== Web Page: {title} ===\nURL: {url}\n\n{sanitized_content}"
     except Exception as e:
         logger.error(f"Error fetching URL {url}: {str(e)}")
         return f"Failed to retrieve web page from '{url}': {str(e)}"

@@ -35,14 +35,23 @@ MODEL_ARTIFACT_SHA256 = {
 
 def _verify_model_artifact(path: str) -> None:
     """Require exact release checksums before deserializing legacy model files."""
-    expected = MODEL_ARTIFACT_SHA256.get(os.path.basename(path))
+    artifact_name = os.path.basename(path)
+    expected = MODEL_ARTIFACT_SHA256.get(artifact_name)
     if expected is None:
+        logger.critical(f"SECURITY ALERT: Refusing to load unapproved model artifact with no pinned checksum: {path}")
         raise ValueError(f"No approved checksum is configured for model artifact: {path}")
+
     digest = hashlib.sha256()
     with open(path, "rb") as artifact:
         for chunk in iter(lambda: artifact.read(1024 * 1024), b""):
             digest.update(chunk)
-    if digest.hexdigest().upper() != expected:
+
+    actual_hash = digest.hexdigest().upper()
+    if actual_hash != expected:
+        logger.critical(
+            f"SECURITY ALERT: Model artifact checksum mismatch on '{artifact_name}'! "
+            f"Expected: {expected}, Actual: {actual_hash}. Possible malicious tampering detected."
+        )
         raise ValueError(f"Model artifact checksum validation failed: {path}")
 
 

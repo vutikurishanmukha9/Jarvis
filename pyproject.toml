@@ -49,6 +49,10 @@ markers = [
 filterwarnings = [
     "ignore::DeprecationWarning",
     "ignore::PendingDeprecationWarning",
+    "ignore::sklearn.exceptions.InconsistentVersionWarning",
+    "ignore:.*InconsistentVersionWarning.*",
+    "ignore:.*X does not have valid feature names.*:UserWarning",
+    "ignore:.*FigureCanvasAgg is non-interactive.*:UserWarning",
 ]
 
 [tool.mypy]

@@ -1,3 +1,4 @@
+import ast
 import io
 import json
 import logging
@@ -43,7 +44,81 @@ BLOCKED_MODULES = [
     "tempfile",
     "glob",
     "fnmatch",
+    "pickle",
+    "shelve",
+    "marshal",
+    "pty",
+    "commands",
+    "sys",
+    "builtins",
+    "gc",
+    "inspect",
+    "posix",
+    "nt",
 ]
+
+DANGEROUS_ATTRIBUTES = {
+    "__subclasses__",
+    "__bases__",
+    "__mro__",
+    "__globals__",
+    "__builtins__",
+    "__code__",
+    "__class__",
+    "__reduce__",
+    "__reduce_ex__",
+}
+
+DANGEROUS_CALL_NAMES = {
+    "__import__",
+    "getattr",
+    "setattr",
+    "delattr",
+    "globals",
+    "locals",
+    "vars",
+    "eval",
+    "exec",
+    "compile",
+    "breakpoint",
+    "exit",
+    "quit",
+    "input",
+    "open",
+}
+
+
+def _validate_python_ast(code_str: str) -> Optional[str]:
+    """Parse and inspect Python AST for security violations prior to execution."""
+    try:
+        tree = ast.parse(code_str)
+    except SyntaxError as e:
+        return f"Python Execution Error: SyntaxError: {str(e)}"
+
+    for node in ast.walk(tree):
+        # 1. Check imports
+        if isinstance(node, ast.Import):
+            for alias in node.names:
+                base_mod = alias.name.split(".")[0]
+                if base_mod in BLOCKED_MODULES:
+                    return f"Security Restriction: Import of '{alias.name}' is blocked."
+        elif isinstance(node, ast.ImportFrom):
+            if node.module:
+                base_mod = node.module.split(".")[0]
+                if base_mod in BLOCKED_MODULES:
+                    return f"Security Restriction: Import from '{node.module}' is blocked."
+
+        # 2. Check direct calls to forbidden functions
+        elif isinstance(node, ast.Call):
+            if isinstance(node.func, ast.Name) and node.func.id in DANGEROUS_CALL_NAMES:
+                return f"Security Restriction: Call to '{node.func.id}()' is prohibited in controlled environment."
+
+        # 3. Check access to dangerous dunder attributes
+        elif isinstance(node, ast.Attribute):
+            if node.attr in DANGEROUS_ATTRIBUTES:
+                return f"Security Restriction: Access to attribute '{node.attr}' is prohibited."
+
+    return None
 
 
 def get_and_clear_figure_buffer() -> List[Any]:
@@ -103,6 +178,12 @@ def python_interpreter(code: str) -> str:
     if clean_code.endswith("```"):
         clean_code = clean_code[:-3]
     clean_code = clean_code.strip()
+
+    # Pre-execution AST security validation
+    ast_error = _validate_python_ast(clean_code)
+    if ast_error:
+        logger.warning(f"Blocked Python code via AST validation: {ast_error}")
+        return ast_error
 
     stdout_capture = io.StringIO()
     stderr_capture = io.StringIO()
