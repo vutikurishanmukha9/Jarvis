@@ -101,7 +101,7 @@ jobs:
         if: runner.os == 'Linux'
         run: |
           sudo apt-get update -q
-          sudo apt-get install -y -q libgl1-mesa-glx libglib2.0-0 tesseract-ocr
+          sudo apt-get install -y -q libgl1 libglib2.0-0 tesseract-ocr
 
       - name: Install Python Dependencies
         run: |
@@ -133,7 +133,7 @@ jobs:
       - name: Install System Dependencies
         run: |
           sudo apt-get update -q
-          sudo apt-get install -y -q libgl1-mesa-glx libglib2.0-0
+          sudo apt-get install -y -q libgl1 libglib2.0-0
 
       - name: Install Python Dependencies
         run: |
