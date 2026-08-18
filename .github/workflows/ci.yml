@@ -1,0 +1,188 @@
+name: Continuous Integration
+
+on:
+  push:
+    branches: ["main"]
+  pull_request:
+    branches: ["main"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  # ==========================================
+  # 1. CODE QUALITY & LINTING (FAST FEEDBACK)
+  # ==========================================
+  lint:
+    name: Code Lint and Format
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: "pip"
+
+      - name: Install Linting Tools
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install ruff
+
+      - name: Check Code Formatting
+        run: ruff format --check app.py src tests
+
+      - name: Run Linter
+        run: ruff check app.py src tests
+
+  # ==========================================
+  # 2. STATIC TYPE CHECKING (MYPY)
+  # ==========================================
+  type-check:
+    name: Static Type Analysis
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: "pip"
+
+      - name: Install Dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install --extra-index-url https://download.pytorch.org/whl/cpu torch torchvision
+          python -m pip install -r requirements.txt -r requirements-dev.txt
+
+      - name: Verify Python Compilation
+        run: python -m compileall -q app.py src tests
+
+      - name: Run MyPy Type Checker
+        run: mypy app.py src tests
+
+  # ==========================================
+  # 3. UNIT & INTEGRATION TEST SUITES
+  # ==========================================
+  test:
+    name: Test Suite (Python ${{ matrix.python-version }})
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest]
+        python-version: ["3.12"]
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+          cache: "pip"
+
+      - name: Install System Dependencies (Linux)
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update -q
+          sudo apt-get install -y -q libgl1-mesa-glx libglib2.0-0 tesseract-ocr
+
+      - name: Install Python Dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install --extra-index-url https://download.pytorch.org/whl/cpu torch torchvision
+          python -m pip install -r requirements.txt -r requirements-dev.txt
+
+      - name: Run Pytest Suite
+        run: pytest -v --durations=10
+
+  # ==========================================
+  # 4. APPLICATION SMOKE TEST
+  # ==========================================
+  smoke-test:
+    name: Smoke Test and Module Ingestion
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: "pip"
+
+      - name: Install System Dependencies
+        run: |
+          sudo apt-get update -q
+          sudo apt-get install -y -q libgl1-mesa-glx libglib2.0-0
+
+      - name: Install Python Dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install --extra-index-url https://download.pytorch.org/whl/cpu torch torchvision
+          python -m pip install -r requirements.txt
+
+      - name: Validate Core Engine Import
+        run: |
+          python -c "
+          import app
+          import src.core.orchestrator
+          import src.assistant.autonomous_runner
+          import src.assistant.workspace_tools
+          import src.tools.browser_tools
+          import src.tools.content_sanitizer
+          import src.tools.python_executor
+          import src.tools.web_tools
+          import src.modules.career
+          import src.modules.outreach
+          import src.modules.vision
+          print('All core JARVIS packages and tools successfully imported without error.')
+          "
+
+  # ==========================================
+  # 5. CI GATEWAY (ALL REQUIRED PASSES)
+  # ==========================================
+  ci-status:
+    name: CI Pipeline Status
+    runs-on: ubuntu-latest
+    needs: [lint, type-check, test, smoke-test]
+    if: always()
+    steps:
+      - name: Evaluate Pipeline Status
+        run: |
+          if [ "${{ needs.lint.result }}" != "success" ]; then
+            echo "Error: Lint job failed."
+            exit 1
+          fi
+          if [ "${{ needs.type-check.result }}" != "success" ]; then
+            echo "Error: Type check job failed."
+            exit 1
+          fi
+          if [ "${{ needs.test.result }}" != "success" ]; then
+            echo "Error: Tests failed."
+            exit 1
+          fi
+          if [ "${{ needs.smoke-test.result }}" != "success" ]; then
+            echo "Error: Smoke test failed."
+            exit 1
+          fi
+          echo "All CI quality gates passed successfully."
