@@ -15,7 +15,7 @@ from langchain_community.embeddings import HuggingFaceEmbeddings
 from langchain_community.vectorstores import FAISS
 from langchain_openai import OpenAIEmbeddings
 from langchain_text_splitters import RecursiveCharacterTextSplitter
-from PyPDF2 import PdfReader
+from pypdf import PdfReader
 
 try:
     from langchain_core.tools import BaseTool, create_retriever_tool
@@ -24,7 +24,7 @@ except ImportError:
     from langchain_core.tools import BaseTool
 
 logger = logging.getLogger(__name__)
-logging.getLogger("PyPDF2").setLevel(logging.ERROR)
+logging.getLogger("pypdf").setLevel(logging.ERROR)
 
 
 def get_files_hash(uploaded_files: List[Any]) -> str:
