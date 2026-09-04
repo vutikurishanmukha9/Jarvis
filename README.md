@@ -5,12 +5,14 @@
 [![Deep Agents](https://img.shields.io/badge/Deep%20Agents-Core%20Harness-purple.svg)](https://docs.langchain.com/oss/python/deepagents/overview)
 [![LangGraph](https://img.shields.io/badge/LangGraph-StateGraph%20Engine-orange.svg)](https://github.com/langchain-ai/langgraph)
 [![browser-use](https://img.shields.io/badge/browser--use-Web%20Agency-teal.svg)](https://github.com/browser-use/browser-use)
+[![Docling](https://img.shields.io/badge/Docling-Document%20Intelligence-008080.svg)](https://github.com/DS4SD/docling)
+[![LangExtract](https://img.shields.io/badge/LangExtract-Grounded%20Extraction-4285F4.svg)](https://github.com/google/langextract)
 [![YOLOv8](https://img.shields.io/badge/YOLOv8-Object%20Detection-yellow.svg)](https://github.com/ultralytics/ultralytics)
 [![FAISS](https://img.shields.io/badge/FAISS-Vector%20Search-blueviolet.svg)](https://github.com/facebookresearch/faiss)
 [![PyTorch](https://img.shields.io/badge/PyTorch-2.0+-ee4c2c.svg)](https://pytorch.org/)
 [![License](https://img.shields.io/badge/License-MIT-lightgrey.svg)](LICENSE)
 
-**J.A.R.V.I.S.** (Joint Autonomous Real-time Vision & Intelligence System) is an enterprise-grade autonomous AI super-intelligence platform and executive personal assistant. Engineered with **Deep Agents**, **LangGraph**, and **browser-use**, it empowers users by breaking down high-level human objectives into executable dependency DAGs, delegating tasks to domain-isolated specialist sub-agents, interacting with live web applications, and generating real-world deliverables (Microsoft Excel workbooks, Word documents, Markdown briefings, and Python automation scripts) in a secure, sandboxed environment.
+**J.A.R.V.I.S.** (Joint Autonomous Real-time Vision & Intelligence System) is an enterprise-grade autonomous AI super-intelligence platform and executive personal assistant. Engineered with **Deep Agents**, **LangGraph**, **browser-use**, **Docling**, and **LangExtract**, it empowers users by breaking down high-level human objectives into executable dependency DAGs, delegating tasks to domain-isolated specialist sub-agents, interacting with live web applications, performing deep document intelligence, extracting grounded entities with exact character offsets, and generating real-world deliverables (Microsoft Excel workbooks, Word documents, Markdown briefings, and Python automation scripts) in a secure, sandboxed environment.
 
 ---
 
@@ -40,7 +42,7 @@ flowchart TD
         OutreachAgent["outreach_specialist (4-Stage Cadence + Recruiter Ingestion)"]
         VisionAgent["vision_analyst (YOLOv8 + OCR + K-Means)"]
         BrowserAgent["browser_specialist (Web Navigation + Forms + Clicking)"]
-        DocAgent["document_researcher (Universal Document FAISS RAG)"]
+        DocAgent["document_researcher (Docling + LangExtract + FAISS RAG)"]
     end
 
     subgraph Autonomous_System ["Autonomous Goal Engine (src/assistant/)"]
@@ -54,6 +56,8 @@ flowchart TD
         PyREPL["Controlled Python REPL (Import Blocklist + 30s Timeout + 50KB Buffer)"]
         WebTools["SSRF-Guarded Web Tools (Scheme Validation + Private IP Filter)"]
         BrowserTools["Browser Tools (Navigation, Clicking, Forms, Scraping, Scrolling)"]
+        DoclingTools["Docling Document Intelligence (PDF, Word, PPTX, HTML, Markdown)"]
+        LangExtractTools["LangExtract Grounded Entity Extraction (Character Spans + Visualizer)"]
     end
 
     subgraph Storage_Layer ["Sandboxed Deliverable Storage"]
@@ -92,7 +96,7 @@ J.A.R.V.I.S. integrates curated, enterprise-grade capabilities across its founda
 3. **Context**: Sliding-window context compaction, token budgeting, and head/tail conversation turn preservation.
 4. **Skills**: Modular skill registration, capability discovery, and dynamic ATS taxonomy matching.
 5. **Filesystem**: Sandboxed workspace file operations with native `.xlsx`, `.docx`, `.md`, `.json`, `.csv` artifact generation.
-6. **Tool Orchestration**: Multi-modal tool execution, sandbox isolation (Python REPL, Web SSRF guards, Browser Automation, YOLOv8/OCR), and real-time `ThoughtStepTracer` telemetry.
+6. **Tool Orchestration**: Multi-modal tool execution, sandbox isolation (Python REPL, Web SSRF guards, Browser Automation, Docling, LangExtract, YOLOv8/OCR), and real-time `ThoughtStepTracer` telemetry.
 
 ### The 5 LangGraph Pillars
 1. **State**: Strongly-typed state schemas (`TypedDict`) and `add_messages` message accumulator reducers.
@@ -143,8 +147,9 @@ J.A.R.V.I.S. integrates curated, enterprise-grade capabilities across its founda
 - **Microsoft Word & Markdown Generator**: Generates formal reports, whitepapers, and briefings in `.docx` and `.md`.
 - **Python Automation Generator**: Writes and inspects standalone Python automation scripts.
 
-### 6. Universal Document & Data RAG Engine
-- **Multi-Format Ingestion**: Ingests **PDF, Word (.docx), Excel (.xlsx), CSV, Markdown (.md), JSON, and Code (.py, .txt)**.
+### 6. Universal Document Intelligence, Grounded Extraction & Data RAG Engine
+- **Docling Document Intelligence**: Deep layout and structural parsing for PDF, Word (.docx), PowerPoint (.pptx), HTML, and Markdown, converting complex visual arrangements and tables into cleanly structured Markdown with resilient automatic fallback to native parsers (`pypdf`, `python-docx`, `pandas`).
+- **Google LangExtract Grounded Information Extraction**: Extracts structured entities and key attributes from unstructured text with exact character-level source text grounding (`start_pos`, `end_pos`), schema constraints, and automatic generation of interactive HTML visualizer reports in `workspace/`.
 - **Tabular Data Understanding**: Automatically extracts dataset schemas, dimensions, and statistical summaries (`df.describe()`).
 - **MD5/SHA-256 Content Caching**: Computes composite hashes over file contents and names to eliminate redundant vector embeddings indexing.
 - **Vector Retrieval**: Dense semantic similarity search powered by FAISS and `all-MiniLM-L6-v2` embeddings.
@@ -225,4 +230,4 @@ Open your browser at `http://localhost:8501`.
 ---
 
 ## License
-Distributed under the MIT License. Built with Streamlit, Deep Agents, LangGraph, browser-use, PyTorch, YOLOv8, and FAISS.
+Distributed under the MIT License. Built with Streamlit, Deep Agents, LangGraph, browser-use, Docling, LangExtract, PyTorch, YOLOv8, and FAISS.

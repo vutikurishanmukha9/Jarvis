@@ -4,7 +4,8 @@
 
 # Environment variables
 .env
-.env.local
+.env.*
+!.env.example
 
 # Python
 __pycache__/
@@ -27,7 +28,14 @@ wheels/
 *.egg-info/
 .installed.cfg
 *.egg
+
+# Testing & Linting
 .pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.coverage
+htmlcov/
+coverage.xml
 
 # Virtual environments
 venv/
@@ -36,7 +44,7 @@ ENV/
 env/
 .venv/
 
-# IDE & Agents
+# IDE & Editor artifacts
 .vscode/
 .idea/
 *.swp
@@ -44,19 +52,22 @@ env/
 *~
 .agents/
 
-# Logs & User Workspace
+# Logs & User Workspace Deliverables
 logs/
 *.log
 workspace/*
 !workspace/.gitkeep
 
-# Models & Temp files
+# Model weights & large binary checkpoints
 *.pt
 *.onnx
+*.bin
+*.safetensors
 
-# OS
+# OS Generated
 .DS_Store
 Thumbs.db
+desktop.ini
 
 # Cloned Framework Repositories
 HI_HR/

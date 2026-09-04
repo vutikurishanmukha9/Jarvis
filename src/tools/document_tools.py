@@ -7,6 +7,7 @@ import hashlib
 import io
 import json
 import logging
+import threading
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 
@@ -18,6 +19,16 @@ from langchain_text_splitters import RecursiveCharacterTextSplitter
 from pypdf import PdfReader
 
 try:
+    from docling.datamodel.base_models import DocumentStream
+    from docling.document_converter import DocumentConverter
+
+    DOCLING_AVAILABLE = True
+except ImportError:
+    DocumentConverter = None  # type: ignore[assignment, misc]
+    DocumentStream = None  # type: ignore[assignment, misc]
+    DOCLING_AVAILABLE = False
+
+try:
     from langchain_core.tools import BaseTool, create_retriever_tool
 except ImportError:
     from langchain.tools.retriever import create_retriever_tool  # type: ignore[no-redef]
@@ -25,6 +36,61 @@ except ImportError:
 
 logger = logging.getLogger(__name__)
 logging.getLogger("pypdf").setLevel(logging.ERROR)
+
+_docling_converter_instance: Optional[Any] = None
+_docling_lock = threading.Lock()
+
+
+def is_docling_available() -> bool:
+    """Return whether the Docling document intelligence engine is installed and ready."""
+    return DOCLING_AVAILABLE and DocumentConverter is not None
+
+
+def get_docling_converter() -> Optional[Any]:
+    """Retrieve or initialize the thread-safe singleton Docling DocumentConverter."""
+    global _docling_converter_instance
+    if not is_docling_available():
+        return None
+
+    if _docling_converter_instance is None:
+        with _docling_lock:
+            if _docling_converter_instance is None:
+                try:
+                    _docling_converter_instance = DocumentConverter()
+                    logger.info("Docling DocumentConverter initialized successfully.")
+                except Exception as e:
+                    logger.warning("Failed to initialize Docling DocumentConverter: %s", e)
+                    return None
+    return _docling_converter_instance
+
+
+def convert_document_with_docling(file_name: str, content_bytes: bytes) -> Optional[Tuple[str, Dict[str, Any]]]:
+    """
+    Attempt to convert a document using Docling into structured Markdown and metadata.
+    Returns None if Docling is unavailable or conversion encounters an error.
+    """
+    converter = get_docling_converter()
+    if converter is None or DocumentStream is None:
+        return None
+
+    try:
+        stream = DocumentStream(name=file_name, stream=io.BytesIO(content_bytes))
+        result = converter.convert(stream)
+        if result and result.document:
+            markdown = result.document.export_to_markdown()
+            meta: Dict[str, Any] = {
+                "filename": file_name,
+                "type": Path(file_name).suffix.lower(),
+                "size": len(content_bytes),
+                "engine": "docling",
+                "tables": len(result.document.tables) if hasattr(result.document, "tables") else 0,
+            }
+            if hasattr(result.document, "pages"):
+                meta["pages"] = len(result.document.pages)
+            return markdown, meta
+    except Exception as e:
+        logger.debug("Docling conversion skipped for %s, falling back to native extractor: %s", file_name, e)
+    return None
 
 
 def get_files_hash(uploaded_files: List[Any]) -> str:
@@ -42,17 +108,26 @@ def get_files_hash(uploaded_files: List[Any]) -> str:
 def extract_text_from_file(file: Any) -> Tuple[str, Dict[str, Any]]:
     """
     Extract readable text and metadata from a single uploaded file.
-    Supports PDF, DOCX, CSV, XLSX, TXT, MD, JSON, PY.
+    Supports PDF, DOCX, PPTX, CSV, XLSX, TXT, MD, HTML, JSON, PY.
+    Leverages Docling for layout- and table-aware conversion with automatic fallback to native parsers.
     """
     file_name = file.name
     suffix = Path(file_name).suffix.lower()
     text = ""
-    metadata = {"filename": file_name, "type": suffix, "size": len(file.getvalue())}
+    content_bytes = file.getvalue() if hasattr(file, "getvalue") else file.read()
+    metadata: Dict[str, Any] = {"filename": file_name, "type": suffix, "size": len(content_bytes)}
+
+    # 1. Attempt Docling conversion first for rich structured document formats
+    if suffix in [".pdf", ".docx", ".pptx", ".html", ".md"]:
+        docling_result = convert_document_with_docling(file_name, content_bytes)
+        if docling_result is not None:
+            docling_text, docling_meta = docling_result
+            if docling_text.strip():
+                return docling_text, docling_meta
 
     try:
-        content_bytes = file.getvalue()
-
-        # 1. PDF
+        # Fallback to native extractors
+        # 1. PDF fallback
         if suffix == ".pdf":
             pdf_reader = PdfReader(io.BytesIO(content_bytes))
             num_pages = len(pdf_reader.pages)
@@ -177,3 +252,27 @@ def create_document_retriever_tool(vector_store: FAISS, top_k: int = 4) -> BaseT
         "document_search",
         "Searches and retrieves the most relevant excerpts, tables, and sections from all uploaded files (PDF, Word, Excel, CSV, text).",
     )
+
+
+def extract_entities_from_document(
+    file_obj: Any,
+    prompt_description: str = "Extract key entities, facts, and attributes",
+    model_id: str = "gpt-4o-mini",
+    **kwargs: Any,
+) -> Dict[str, Any]:
+    """
+    Extract structured, grounded entities from an uploaded document.
+    Leverages Docling for deep document layout parsing, then runs LangExtract
+    to map entities to exact character spans in the extracted text.
+    """
+    from .extraction_tools import extract_grounded_entities
+
+    text, meta = extract_text_from_file(file_obj)
+    extraction_res = extract_grounded_entities(
+        text=text,
+        prompt_description=prompt_description,
+        model_id=model_id,
+        **kwargs,
+    )
+    extraction_res["document_metadata"] = meta
+    return extraction_res

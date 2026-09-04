@@ -15,7 +15,7 @@ concurrency:
   cancel-in-progress: true
 
 env:
-  PYTHONPATH: ".:deepagents/libs/deepagents:browser-use"
+  PYTHONPATH: ".:deepagents/libs/deepagents:browser-use:docling"
 
 jobs:
   # ==========================================
@@ -155,6 +155,8 @@ jobs:
           import src.tools.content_sanitizer
           import src.tools.python_executor
           import src.tools.web_tools
+          import src.tools.document_tools
+          import src.tools.extraction_tools
           import src.modules.career
           import src.modules.outreach
           import src.modules.vision

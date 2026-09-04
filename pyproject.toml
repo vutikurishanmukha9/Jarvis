@@ -10,7 +10,12 @@ extend-exclude = [
     "venv312",
     "workspace",
     "src/modules/career/data",
+    "deepagents",
+    "browser-use",
+    "docling",
+    "langextract",
 ]
+
 
 [tool.ruff.lint]
 select = [
@@ -38,7 +43,10 @@ pythonpath = [
     ".",
     "deepagents/libs/deepagents",
     "browser-use",
+    "docling",
+    "langextract",
 ]
+
 addopts = [
     "-ra",
     "--strict-config",
