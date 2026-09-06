@@ -87,10 +87,18 @@ def get_val(key, default=None, store=CHR):
 
 
 class Tag2Method:
+    @staticmethod
+    def _extract_stag(tag):
+        if "}" in tag:
+            return tag.split("}", 1)[1]
+        if ":" in tag:
+            return tag.split(":", 1)[1]
+        return tag
+
     def call_method(self, elm, stag=None):
         getmethod = self.tag2meth.get
         if stag is None:
-            stag = elm.tag.replace(OMML_NS, "")
+            stag = self._extract_stag(elm.tag)
         method = getmethod(stag)
         if method:
             return method(self, elm)
@@ -102,9 +110,7 @@ class Tag2Method:
         process children of the elm,return iterable
         """
         for _e in list(elm):
-            if OMML_NS not in _e.tag:
-                continue
-            stag = _e.tag.replace(OMML_NS, "")
+            stag = self._extract_stag(_e.tag)
             if include and (stag not in include):
                 continue
             t = self.call_method(_e, stag=stag)
@@ -113,6 +119,7 @@ class Tag2Method:
                 if t is None:
                     continue
             yield (stag, t, _e)
+
 
     def process_children_dict(self, elm, include=None):
         """

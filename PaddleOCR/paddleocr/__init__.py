@@ -12,35 +12,62 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from paddlex.inference.utils.benchmark import benchmark
+try:
+    from paddlex.inference.utils.benchmark import benchmark
 
-from ._models import (
-    ChartParsing,
-    DocImgOrientationClassification,
-    DocVLM,
-    FormulaRecognition,
-    LayoutDetection,
-    SealTextDetection,
-    TableCellsDetection,
-    TableClassification,
-    TableStructureRecognition,
-    TextDetection,
-    TextImageUnwarping,
-    TextLineOrientationClassification,
-    TextRecognition,
-)
-from ._pipelines import (
-    DocPreprocessor,
-    DocUnderstanding,
-    FormulaRecognitionPipeline,
-    PaddleOCR,
-    PaddleOCRVL,
-    PPChatOCRv4Doc,
-    PPDocTranslation,
-    PPStructureV3,
-    SealRecognition,
-    TableRecognitionPipelineV2,
-)
+    from ._models import (
+        ChartParsing,
+        DocImgOrientationClassification,
+        DocVLM,
+        FormulaRecognition,
+        LayoutDetection,
+        SealTextDetection,
+        TableCellsDetection,
+        TableClassification,
+        TableStructureRecognition,
+        TextDetection,
+        TextImageUnwarping,
+        TextLineOrientationClassification,
+        TextRecognition,
+    )
+    from ._pipelines import (
+        DocPreprocessor,
+        DocUnderstanding,
+        FormulaRecognitionPipeline,
+        PaddleOCR,
+        PaddleOCRVL,
+        PPChatOCRv4Doc,
+        PPDocTranslation,
+        PPStructureV3,
+        SealRecognition,
+        TableRecognitionPipelineV2,
+    )
+except ImportError:
+    benchmark = None
+    ChartParsing = None
+    DocImgOrientationClassification = None
+    DocVLM = None
+    FormulaRecognition = None
+    LayoutDetection = None
+    SealTextDetection = None
+    TableCellsDetection = None
+    TableClassification = None
+    TableStructureRecognition = None
+    TextDetection = None
+    TextImageUnwarping = None
+    TextLineOrientationClassification = None
+    TextRecognition = None
+    DocPreprocessor = None
+    DocUnderstanding = None
+    FormulaRecognitionPipeline = None
+    PaddleOCR = None
+    PaddleOCRVL = None
+    PPChatOCRv4Doc = None
+    PPDocTranslation = None
+    PPStructureV3 = None
+    SealRecognition = None
+    TableRecognitionPipelineV2 = None
+
 from ._api_client.async_client import AsyncPaddleOCRClient
 from ._api_client.client import PaddleOCRClient
 from ._api_client.errors import (

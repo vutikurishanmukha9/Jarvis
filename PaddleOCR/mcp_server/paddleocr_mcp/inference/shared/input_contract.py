@@ -90,19 +90,38 @@ def classify_input(value: str) -> InputKind:
     raise ValueError(f"Invalid input_data. {COMMON_INPUT_DESCRIPTION}")
 
 
-def resolve_absolute_path(value: str) -> Path:
+import os
+
+
+def resolve_absolute_path(value: str, allowed_base_dir: Optional[str] = None) -> Path:
+    if "\x00" in value:
+        raise ValueError(f"Invalid path containing null bytes: {value!r}")
     path = Path(value).expanduser()
     if not path.is_absolute():
         raise ValueError(
             f"Relative paths are not supported: {value!r}. "
             "Use an absolute path accessible to the MCP server process."
         )
-    if not path.exists():
+    resolved = path.resolve()
+    if not resolved.exists():
         raise ValueError(
-            f"File not found: {value!r} (resolved to {path}). "
+            f"File not found: {value!r} (resolved to {resolved}). "
             f"{COMMON_INPUT_DESCRIPTION}"
         )
-    return path.resolve()
+    # Enforce sandbox boundary if configured via argument or environment variable
+    base_dir = allowed_base_dir or os.environ.get("MCP_ALLOWED_DIR") or os.environ.get("MCP_SANDBOX_DIR")
+    if base_dir:
+
+        
+        base_path = Path(base_dir).expanduser().resolve()
+        try:
+            resolved.relative_to(base_path)
+        except ValueError:
+            raise PermissionError(
+                f"Access denied: Path {value!r} resolved to {resolved}, which is outside "
+                f"the permitted sandbox directory {base_path}."
+            )
+    return resolved
 
 
 def validate_external_contract(input_data: str) -> InputKind:

@@ -93,13 +93,21 @@ class LocalInputAdapter(InputAdapter):
             import numpy as np
             from PIL import Image as PILImage
 
+            image_pil = None
             try:
                 image_pil = PILImage.open(io.BytesIO(data))
                 image_arr = np.array(image_pil.convert("RGB"))
                 yield np.ascontiguousarray(image_arr[..., ::-1])
             except Exception as e:
                 raise ValueError(f"Failed to decode Base64 image: {e}") from e
+            finally:
+                if image_pil is not None:
+                    try:
+                        image_pil.close()
+                    except Exception:
+                        pass
             return
+
 
         if file_type == "pdf":
             with materialize_bytes_as_temp_file(data, file_type="pdf") as temp_path:

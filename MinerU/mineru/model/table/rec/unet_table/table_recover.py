@@ -155,6 +155,7 @@ class TableRecover:
                 # 不一定是从0开始的，应该综合已有值和x坐标位置来确定起始位置
                 loc_col_idx = np.argmin(np.abs(longest_col - box[0, 0]))
                 col_start = max(sum(one_col_result.values()), loc_col_idx)
+                col_start = min(max(0, int(col_start)), max(0, col_nums - 1))
 
                 # 计算合并多少个列方向单元格
                 for i in range(col_start, col_nums):
@@ -173,13 +174,15 @@ class TableRecover:
                             < abs(col_cum_sum - each_col_widths[i] - box_width)
                             else i - 1
                         )
-                        one_col_result[one_col] = idx + 1 - col_start
+                        one_col_result[one_col] = max(1, idx + 1 - col_start)
                         break
                 else:
-                    one_col_result[one_col] = col_nums - col_start
-                col_end = one_col_result[one_col] + col_start - 1
+                    one_col_result[one_col] = max(1, col_nums - col_start)
+                one_col_result[one_col] = max(1, one_col_result[one_col])
+                col_end = min(col_nums - 1, max(col_start, one_col_result[one_col] + col_start - 1))
+
                 box_height = self.compute_L2(box[1, :], box[0, :])
-                row_start = cur_row
+                row_start = min(max(0, int(cur_row)), max(0, row_nums - 1))
                 for j in range(row_start, row_nums):
                     row_cum_sum = sum(each_row_heights[row_start : j + 1])
                     # box_height 不确定是几行的高度，所以要逐个试验，找一个最近的几行的高
@@ -198,11 +201,12 @@ class TableRecover:
                             < abs(row_cum_sum - each_row_heights[j] - box_height)
                             else j - 1
                         )
-                        one_row_result[one_col] = idx + 1 - row_start
+                        one_row_result[one_col] = max(1, idx + 1 - row_start)
                         break
                 else:
-                    one_row_result[one_col] = row_nums - row_start
-                row_end = one_row_result[one_col] + row_start - 1
+                    one_row_result[one_col] = max(1, row_nums - row_start)
+                one_row_result[one_col] = max(1, one_row_result[one_col])
+                row_end = min(row_nums - 1, max(row_start, one_row_result[one_col] + row_start - 1))
                 logic_points[one_col] = np.array(
                     [row_start, row_end, col_start, col_end]
                 )

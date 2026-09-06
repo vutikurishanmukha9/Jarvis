@@ -506,14 +506,26 @@ def create_result_zip(
 
     with zipfile.ZipFile(zip_path, "w", compression=zipfile.ZIP_DEFLATED) as zf:
         for pdf_name in pdf_file_names:
+            safe_name = os.path.basename(str(pdf_name)).strip()
+            if not safe_name or safe_name in (".", ".."):
+                continue
             try:
-                parse_dir = get_parse_dir(output_dir, pdf_name, backend, parse_method)
+                parse_dir = get_parse_dir(output_dir, safe_name, backend, parse_method)
             except ValueError:
-                logger.warning(f"Unknown backend type: {backend}, skipping {pdf_name}")
+                logger.warning(f"Unknown backend type: {backend}, skipping {safe_name}")
                 continue
 
-            if not os.path.exists(parse_dir):
+            resolved_parse_dir = Path(parse_dir).resolve()
+            resolved_output_dir = Path(output_dir).resolve()
+            try:
+                resolved_parse_dir.relative_to(resolved_output_dir)
+            except ValueError:
+                logger.warning(f"Potential path traversal detected for {pdf_name}, skipping")
                 continue
+
+            if not resolved_parse_dir.exists():
+                continue
+
 
             if return_md:
                 path = os.path.join(parse_dir, f"{pdf_name}.md")

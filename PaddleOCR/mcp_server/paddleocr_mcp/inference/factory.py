@@ -15,18 +15,16 @@ from typing import Any, Callable
 
 from .base import Inference
 from .ocr.aistudio import OCRAIStudioInference
-from .ocr.local import OCRLocalInference
 from .ocr.self_hosted import OCRSelfHostedInference
 from .paddleocr_vl.aistudio import PaddleOCRVLAIStudioInference
-from .paddleocr_vl.local import PaddleOCRVLLocalInference
 from .paddleocr_vl.qianfan import PaddleOCRVLQianfanInference
 from .paddleocr_vl.self_hosted import PaddleOCRVLSelfHostedInference
 from .pp_structurev3.aistudio import PPStructureV3AIStudioInference
-from .pp_structurev3.local import PPStructureV3LocalInference
 from .pp_structurev3.qianfan import PPStructureV3QianfanInference
 from .pp_structurev3.self_hosted import PPStructureV3SelfHostedInference
 from ..selection import tool_for_model
 from ..providers import InferenceProvider, normalize_provider
+
 
 
 class InferenceFactory:
@@ -72,6 +70,8 @@ class InferenceFactory:
 
 
 def _create_ocr_local(model: str, **kwargs: Any) -> Inference:
+    from .ocr.local import OCRLocalInference
+
     return OCRLocalInference(
         config=kwargs.get("config"),
         device=kwargs.get("device"),
@@ -97,6 +97,8 @@ def _create_ocr_self_hosted(model: str, **kwargs: Any) -> Inference:
 
 
 def _create_pp_structurev3_local(model: str, **kwargs: Any) -> Inference:
+    from .pp_structurev3.local import PPStructureV3LocalInference
+
     return PPStructureV3LocalInference(
         config=kwargs.get("config"),
         device=kwargs.get("device"),
@@ -121,11 +123,14 @@ def _create_pp_structurev3_self_hosted(model: str, **kwargs: Any) -> Inference:
 
 
 def _create_paddleocr_vl_local(model: str, **kwargs: Any) -> Inference:
+    from .paddleocr_vl.local import PaddleOCRVLLocalInference
+
     return PaddleOCRVLLocalInference(
         config=kwargs.get("config"),
         device=kwargs.get("device"),
         model=model,
     )
+
 
 
 def _create_paddleocr_vl_aistudio(model: str, **kwargs: Any) -> Inference:

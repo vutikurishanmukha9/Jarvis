@@ -654,6 +654,7 @@ The test suite contains exhaustive unit and integration tests across all subsyst
 - `test_orchestrator_resilience.py`: Provider timeout recovery and graceful fallback responses.
 - `test_config.py`: Directory creation and provider registry validation.
 - `test_context_pruning.py`: Sliding window context compaction algorithms.
+- `test_ecosystem_hardening.py`: Tests MCP sandbox enforcement, null-byte rejection, OMML namespace-agnostic translation, and UNet table bounds clamping.
 - `test_retry_utils.py`: Backoff timing and transient error classification.
 - `test_schemas.py`: Pydantic V2 schema validations and constraints.
 - `test_session_manager.py`: Session file creation, loading, and recovery.
@@ -728,3 +729,4 @@ The table below documents how J.A.R.V.I.S. mitigates the core threat categories:
 | **SEC-06** | Model Serialization Tampering | Malicious pickle injection via modified model weights | `_verify_model_artifact`: Cryptographic SHA-256 hash calculation against reference hash with critical security audit logging before loading model weights | [`src/modules/career/scorer/services/model_manager.py`](src/modules/career/scorer/services/model_manager.py) |
 | **SEC-07** | Denial of Service via PDF Parsing | Infinite loops in malformed PDF parsing (CVE / PYSEC-2026-1835) | Migrated to official modern `pypdf>=5.0.0` with safe object parsing and resource bounds | [`src/tools/document_tools.py`](src/tools/document_tools.py) |
 | **SEC-08** | Concurrent State Corruption | Race conditions or file locks on profile/memory writes on Windows | Exponential retry loops with atomic replacement semantics in `ProfileManager` | [`src/assistant/profile_manager.py`](src/assistant/profile_manager.py) |
+| **SEC-09** | MCP & API Path Traversal / Arbitrary LFI | External clients attempting to access arbitrary host files via MCP server or API endpoints | `resolve_absolute_path` enforces sandbox boundaries (`MCP_ALLOWED_DIR`) with null-byte sanitization and `Path.relative_to` verification; `create_result_zip` enforces `output_dir` path confinement | [`PaddleOCR/mcp_server/paddleocr_mcp/inference/shared/input_contract.py`](PaddleOCR/mcp_server/paddleocr_mcp/inference/shared/input_contract.py), [`MinerU/mineru/cli/fast_api.py`](MinerU/mineru/cli/fast_api.py) |
