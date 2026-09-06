@@ -45,5 +45,7 @@ def test_vision_clear_active_images():
 def test_vision_tools_suite_registration():
     """Verify vision tools are registered in module suite."""
     tools = get_vision_tools()
-    assert len(tools) == 1
-    assert tools[0].name == "analyze_uploaded_images"
+    assert len(tools) == 2
+    tool_names = [t.name for t in tools]
+    assert "analyze_uploaded_images" in tool_names
+    assert "extract_scene_text_ocr" in tool_names

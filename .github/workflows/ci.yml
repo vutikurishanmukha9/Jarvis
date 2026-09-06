@@ -15,7 +15,7 @@ concurrency:
   cancel-in-progress: true
 
 env:
-  PYTHONPATH: ".:deepagents/libs/deepagents:browser-use:docling"
+  PYTHONPATH: ".:deepagents/libs/deepagents:browser-use:docling:langextract:MinerU:PaddleOCR:PaddleOCR/langchain-paddleocr"
 
 jobs:
   # ==========================================

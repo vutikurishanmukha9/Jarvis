@@ -68,6 +68,10 @@
     - `browser-use/`
     - `deepagents/`
     - `langgraph/`
+    - `docling/`
+    - `langextract/`
+    - `MinerU/`
+    - `PaddleOCR/`
 12. [CI/CD and Security Pipelines (`.github/workflows/`)](#12-cicd-and-security-pipelines-githubworkflows)
     - `.github/workflows/ci.yml`
     - `.github/workflows/security.yml`
@@ -442,21 +446,24 @@ The following table provides the exhaustive file inventory across the entire rep
   - `scroll_page`: Scrolls the viewport up or down for dynamic infinite-scroll pages.
   - `get_session_state`: Inspects current URL, title, and viewport state.
 
-### 7.6. `src/tools/document_tools.py` (Docling Document Intelligence & Universal RAG)
-- **Role**: Deep document understanding, multi-format conversion, tabular profiling, and dense vector retrieval.
+### 7.6. `src/tools/document_tools.py` (MinerU & Docling Document Intelligence & Universal RAG)
+- **Role**: Deep document understanding, scientific formula recognition, multi-format layout conversion, tabular profiling, and dense vector retrieval.
 - **Key Features**:
+  - **MinerU Scientific Intelligence Engine**: High-precision PDF layout analysis, reading order reconstruction, complex cross-page table recognition, and LaTeX mathematical formula extraction (inline and display math expressions like `$E = mc^2$` and `$$\int ...$$`), purpose-built for academic and technical papers.
   - **Docling Document Intelligence Engine**: Integrates the high-performance `docling` library to parse complex documents into cleanly structured Markdown preserving headers, reading order, and tabular relationships.
-  - **Supported Formats via Docling**: `.pdf`, `.docx`, `.pptx`, `.html`, `.md`, `.asciidoc`.
-  - **Lazy Singleton Architecture (`get_docling_converter`)**: Thread-safe initialization using double-checked locking to load `DocumentConverter` on demand without startup overhead.
-  - **Self-Contained Plugin Resolution**: Customized `base_factory.py` automatically registers default converters (`docling.models.plugins.defaults`) even when running as a vendored uninstalled package without setuptools entry points.
-  - **Resilient Multi-Tier Fallback**:
-    - If Docling is unavailable or encounters an unhandled formatting exception during conversion, execution automatically falls back to native parsers without disruption.
-    - PDF fallback: `pypdf>=5.0.0` (PdfReader) with page text extraction and error recovery.
-    - Word fallback: `python-docx` extracting paragraph and table text.
-    - Tabular fallback: `pandas` reading CSV and Excel (`.xlsx`, `.xls`) with statistical data profiling (`df.describe()`, column summaries).
+  - **Supported Formats**: `.pdf` (MinerU/Docling), `.docx`, `.pptx`, `.xlsx`, `.html`, `.md`, `.csv`, `.json`.
+  - **Multi-Tier Processing Hierarchy (`extract_text_from_file`)**:
+    - Tier 1 (Scientific/Formulas): MinerU handles complex academic PDFs and formula extraction with thread-safe execution (`_mineru_lock`).
+    - Tier 2 (General Layouts): Docling handles multi-format layout conversion via lazy singleton converter (`get_docling_converter`).
+    - Tier 3 (Native Fallbacks): Zero-dependency native parsers (`pypdf`, `python-docx`, `openpyxl`, `pandas`).
+  - **Specialized MinerU Tooling**:
+    - `is_mineru_available`: Non-blocking capability verification.
+    - `convert_document_with_mineru`: Converts documents to structured Markdown with LaTeX math formulas and detailed feature counts (`formulas`, `tables`, `pages`).
+    - `parse_document_with_mineru`: High-level ingestion utility returning structured conversion status and metadata.
+    - `create_mineru_document_tool`: LangChain agent tool (`parse_scientific_document`) for automated scientific literature review.
   - **Composite Hash Caching (`get_files_hash`)**: Computes SHA-256 hashes of document bytes to skip redundant FAISS vector re-indexing for unchanged documents.
   - **Dense FAISS Vector Store**: Employs LangChain text splitters and `all-MiniLM-L6-v2` embeddings for fast semantic chunk retrieval.
-  - **Document Entity Pipeline (`extract_entities_from_document`)**: Connects Docling layout parsing with LangExtract grounded extraction to extract structured entities from any uploaded file.
+  - **Document Entity Pipeline (`extract_entities_from_document`)**: Connects document layout parsing with LangExtract grounded extraction to extract structured entities from any uploaded file.
 
 ### 7.7. `src/tools/extraction_tools.py` (Google LangExtract Grounded Information Extraction)
 - **Role**: Precise, schema-constrained structured information extraction from unstructured text with character-level source grounding and visual report generation.
@@ -543,17 +550,21 @@ Section multipliers weight skills discovered in `Experience` ($1.5\times$) and `
 
 ### 10.1. Architecture & Perception Stack
 - **YOLOv8 Object Detection**: PyTorch-accelerated object localization, classification, and visual bounding box annotation.
-- **Tesseract OCR**: Printed and handwritten text extraction from charts, diagrams, documents, and screenshots.
+- **PaddleOCR Dual-Engine OCR**: High-precision SOTA optical character recognition featuring DBNet++ text detection, SVTR recognition, and direction angle classification for scene text, fine print, receipts, labels, and diagrams.
+- **Tesseract OCR Fallback**: Resilient secondary OCR engine providing fail-safe printed and handwritten text extraction.
 - **Quality & Palette Analytics**:
   - Blur calculation using Laplacian variance: $\sigma^2 = \text{Var}(\nabla^2 I)$.
   - Color extraction using K-Means clustering ($K=4$) in RGB space computing percentage dominance.
 
 ### 10.2. File-by-File Breakdown
-- `src/modules/vision/__init__.py`: Package marker.
-- `src/modules/vision/vision_bridge.py`: Exposes agent tools:
-  - `analyze_image_deep`: Runs YOLOv8, OCR, blur, and color extraction on uploaded images.
-  - `register_uploaded_image`: Stores active image bytes in session buffer.
-  - `clear_uploaded_images`: Clears image memory buffer.
+- `src/modules/vision/__init__.py`: Package marker exporting vision tools and OCR helpers.
+- `src/modules/vision/vision_bridge.py`: Exposes vision functions and LangChain tools:
+  - `analyze_image_deep`: Multi-modal pipeline running YOLOv8, dual-engine OCR (PaddleOCR + Tesseract), blur variance, and K-Means color dominance.
+  - `extract_scene_text_ocr`: Dedicated tool extracting scene text, bounding boxes, and confidence scores via PaddleOCR.
+  - `extract_text_paddleocr`: Thread-safe helper normalizing images (bytes, PIL, numpy) and running PaddleOCR.
+  - `is_paddleocr_available`: Dynamic availability check for the vendored `ppocr` engine.
+  - `register_uploaded_image`: Stores active image bytes and OpenCV representations in session buffer.
+  - `clear_active_images`: Clears active image memory buffer.
 - `src/modules/vision/engine/config.py`: Configuration for model paths (`yolov8n.pt`), confidence thresholds (0.25), and OCR settings.
 - `src/modules/vision/engine/constants.py`: Bounding box color maps, maximum image dimensions, and quality thresholds.
 - `src/modules/vision/engine/exceptions.py`: Custom exceptions (`ImageProcessingError`, `ModelInferenceError`).
@@ -587,6 +598,26 @@ Section multipliers weight skills discovered in `Experience` ($1.5\times$) and `
 - **Location**: `langgraph/libs/`
 - **Purpose**: Stateful multi-actor graph execution framework. Provides Pregel BSP loop execution, thread-scoped `MemorySaver` checkpoints, human-in-the-loop interruption triggers, and conditional branching (`tools_condition`).
 - **Integration**: Compiles the primary stateful execution graph in `src/core/orchestrator.py`.
+
+### 11.4. `docling/`
+- **Location**: `docling/`
+- **Purpose**: Advanced document layout analysis and multi-format conversion to cleanly formatted Markdown.
+- **Integration**: Wrapped by `src/tools/document_tools.py` with double-checked lazy locking.
+
+### 11.5. `langextract/`
+- **Location**: `langextract/`
+- **Purpose**: Grounded information extraction library mapping entities back to exact character span intervals.
+- **Integration**: Wrapped by `src/tools/extraction_tools.py`.
+
+### 11.6. `MinerU/`
+- **Location**: `MinerU/mineru/`
+- **Purpose**: Deep scientific document parsing, multi-column reading order reconstruction, complex table merging, and LaTeX formula recognition (`$...$` and `$$...$$`).
+- **Integration**: Wrapped by `src/tools/document_tools.py` and exposed via `parse_scientific_document` agent tool.
+
+### 11.7. `PaddleOCR/`
+- **Location**: `PaddleOCR/ppocr/`
+- **Purpose**: High-precision scene text and document OCR featuring DBNet++ detection, SVTR text recognition, and direction angle classifiers.
+- **Integration**: Wrapped by `src/modules/vision/vision_bridge.py` and exposed via `extract_scene_text_ocr` agent tool and `analyze_image_deep` dual-engine pipeline.
 
 ---
 
@@ -661,6 +692,9 @@ The test suite contains exhaustive unit and integration tests across all subsyst
 - `test_browser_scraping.py`: Tests table parsing and clean text extraction.
 - `test_browser_interaction.py`: Tests viewport scrolling and screenshot capture.
 - `test_document_parsers.py`: Tests parsing PDF (pypdf), Word, Excel, CSV, JSON, and code files.
+- `test_document_tools_docling.py`: Tests Docling initialization, HTML table extraction, and fallback mechanisms.
+- `test_document_tools_mineru.py`: Tests MinerU availability, LaTeX formula and table parsing, multi-tier fallback, and LangChain tool integration.
+- `test_extraction_tools_langextract.py`: Tests LangExtract grounded extraction, character span mapping, and visualizer generation.
 - `test_document_hash_caching.py`: Tests composite SHA-256 hash caching.
 - `test_document_hash_rag.py`: Tests vector search and chunk retrieval accuracy.
 
@@ -676,6 +710,7 @@ The test suite contains exhaustive unit and integration tests across all subsyst
 - `test_outreach_bridge.py`: Tests outreach tools exposed to the orchestrator.
 - `test_vision_algorithms.py`: Tests Laplacian blur, K-Means color clustering, and YOLO detection.
 - `test_vision_bridge.py`: Tests vision tools exposed to the orchestrator.
+- `test_vision_paddleocr.py`: Tests PaddleOCR contract, scene text extraction, bounding box localization, multi-tier fallback to Tesseract, and thread safety.
 
 ---
 

@@ -7,6 +7,8 @@ import hashlib
 import io
 import json
 import logging
+import sys
+import tempfile
 import threading
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
@@ -17,6 +19,11 @@ from langchain_community.vectorstores import FAISS
 from langchain_openai import OpenAIEmbeddings
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from pypdf import PdfReader
+
+# Ensure vendored MinerU is discoverable on sys.path
+_MINERU_DIR = Path(__file__).resolve().parent.parent.parent / "MinerU"
+if _MINERU_DIR.exists() and str(_MINERU_DIR) not in sys.path:
+    sys.path.insert(0, str(_MINERU_DIR))
 
 try:
     from docling.datamodel.base_models import DocumentStream
@@ -39,6 +46,9 @@ logging.getLogger("pypdf").setLevel(logging.ERROR)
 
 _docling_converter_instance: Optional[Any] = None
 _docling_lock = threading.Lock()
+
+_MINERU_AVAILABLE: Optional[bool] = None
+_mineru_lock = threading.Lock()
 
 
 def is_docling_available() -> bool:
@@ -93,6 +103,244 @@ def convert_document_with_docling(file_name: str, content_bytes: bytes) -> Optio
     return None
 
 
+def is_mineru_available() -> bool:
+    """Return whether the MinerU document intelligence engine is installed and ready."""
+    global _MINERU_AVAILABLE
+    if _MINERU_AVAILABLE is None:
+        try:
+            import mineru  # noqa: F401
+
+            _MINERU_AVAILABLE = True
+        except ImportError:
+            _MINERU_AVAILABLE = False
+    return _MINERU_AVAILABLE
+
+
+def _count_mineru_features(pdf_info: List[Dict[str, Any]]) -> Tuple[int, int]:
+    """Count LaTeX formulas and tables in MinerU pdf_info data structure."""
+    formulas = 0
+    tables = 0
+    for page in pdf_info:
+        for block in page.get("para_blocks", []):
+            btype = str(block.get("type", "")).lower()
+            if "equation" in btype or "formula" in btype:
+                formulas += 1
+            elif "table" in btype:
+                tables += 1
+            for line in block.get("lines", []):
+                for span in line.get("spans", []):
+                    stype = str(span.get("type", "")).lower()
+                    content = str(span.get("content", ""))
+                    if "equation" in stype or "formula" in stype:
+                        formulas += 1
+                    elif "$" in content and not ("equation" in btype or "formula" in btype) and content.count("$") >= 2:
+                        formulas += 1
+    return formulas, tables
+
+
+def _run_mineru_pdf_extraction(
+    file_name: str,
+    content_bytes: bytes,
+    parse_method: str = "auto",
+    formula_enable: bool = True,
+    table_enable: bool = True,
+) -> Optional[Tuple[str, Dict[str, Any]]]:
+    """Execute MinerU PDF extraction pipeline."""
+    try:
+        from mineru.backend.pipeline.pipeline_analyze import doc_analyze_streaming
+        from mineru.backend.pipeline.pipeline_middle_json_mkcontent import union_make as pipeline_union_make
+        from mineru.data.data_reader_writer import FileBasedDataWriter
+        from mineru.utils.enum_class import MakeMode
+
+        with tempfile.TemporaryDirectory() as temp_dir:
+            image_writer = FileBasedDataWriter(str(Path(temp_dir) / "images"))
+            ready_docs: List[Dict[str, Any]] = []
+
+            def on_doc_ready(doc_index: int, model_list: Any, middle_json: Dict[str, Any], ocr_enable: bool) -> None:
+                ready_docs.append(middle_json)
+
+            doc_analyze_streaming(
+                pdf_bytes_list=[content_bytes],
+                image_writer_list=[image_writer],
+                lang_list=["en"],
+                on_doc_ready=on_doc_ready,
+                parse_method=parse_method,
+                formula_enable=formula_enable,
+                table_enable=table_enable,
+            )
+
+            if ready_docs and "pdf_info" in ready_docs[0]:
+                middle_json = ready_docs[0]
+                pdf_info = middle_json["pdf_info"]
+                md_text = pipeline_union_make(pdf_info, MakeMode.MM_MD)
+                if md_text and md_text.strip():
+                    num_formulas, num_tables = _count_mineru_features(pdf_info)
+                    meta: Dict[str, Any] = {
+                        "filename": file_name,
+                        "type": ".pdf",
+                        "size": len(content_bytes),
+                        "engine": "mineru",
+                        "pages": len(pdf_info),
+                        "formulas": num_formulas,
+                        "tables": num_tables,
+                    }
+                    return md_text, meta
+    except Exception as e:
+        logger.debug("MinerU PDF extraction encountered error for %s: %s", file_name, e)
+    return None
+
+
+def _run_mineru_office_extraction(file_name: str, content_bytes: bytes) -> Optional[Tuple[str, Dict[str, Any]]]:
+    """Execute MinerU Office (DOCX, PPTX, XLSX) extraction."""
+    suffix = Path(file_name).suffix.lower()
+    try:
+        from mineru.backend.office.office_middle_json_mkcontent import union_make as office_union_make
+        from mineru.utils.enum_class import MakeMode
+
+        middle_json = None
+        if suffix == ".docx":
+            from mineru.backend.office.docx_analyze import office_docx_analyze
+
+            middle_json, _ = office_docx_analyze(content_bytes)
+        elif suffix == ".pptx":
+            from mineru.backend.office.pptx_analyze import office_pptx_analyze
+
+            middle_json, _ = office_pptx_analyze(content_bytes)
+        elif suffix == ".xlsx":
+            from mineru.backend.office.xlsx_analyze import office_xlsx_analyze
+
+            middle_json, _ = office_xlsx_analyze(content_bytes)
+
+        if middle_json and "pdf_info" in middle_json:
+            pdf_info = middle_json["pdf_info"]
+            md_text = office_union_make(pdf_info, MakeMode.MM_MD)
+            if md_text and md_text.strip():
+                num_formulas, num_tables = _count_mineru_features(pdf_info)
+                meta: Dict[str, Any] = {
+                    "filename": file_name,
+                    "type": suffix,
+                    "size": len(content_bytes),
+                    "engine": "mineru",
+                    "pages": len(pdf_info),
+                    "formulas": num_formulas,
+                    "tables": num_tables,
+                }
+                return md_text, meta
+    except Exception as e:
+        logger.debug("MinerU office extraction encountered error for %s: %s", file_name, e)
+    return None
+
+
+def convert_document_with_mineru(
+    file_name: str,
+    content_bytes: bytes,
+    parse_method: str = "auto",
+    formula_enable: bool = True,
+    table_enable: bool = True,
+) -> Optional[Tuple[str, Dict[str, Any]]]:
+    """
+    Attempt to convert a document using MinerU into structured Markdown and metadata.
+    Specializes in academic/scientific PDFs, LaTeX formula recognition ($...$ / $$...$$),
+    multi-column reading order, and complex tables.
+    Returns (markdown, metadata) or None if MinerU is unavailable or encounters an error.
+    """
+    if not is_mineru_available():
+        return None
+
+    suffix = Path(file_name).suffix.lower()
+    if suffix not in [".pdf", ".docx", ".pptx", ".xlsx"]:
+        return None
+
+    # 1. Custom runner hook (allows unit test mocking and custom pipeline injection)
+    if hasattr(convert_document_with_mineru, "_runner"):
+        runner = convert_document_with_mineru._runner
+        if callable(runner):
+            try:
+                return runner(
+                    file_name,
+                    content_bytes,
+                    parse_method=parse_method,
+                    formula_enable=formula_enable,
+                    table_enable=table_enable,
+                )
+            except Exception as e:
+                logger.debug("MinerU runner encountered error for %s: %s", file_name, e)
+                return None
+
+    # 2. Native execution with thread safety
+    with _mineru_lock:
+        try:
+            if suffix == ".pdf":
+                return _run_mineru_pdf_extraction(
+                    file_name,
+                    content_bytes,
+                    parse_method=parse_method,
+                    formula_enable=formula_enable,
+                    table_enable=table_enable,
+                )
+            elif suffix in [".docx", ".pptx", ".xlsx"]:
+                return _run_mineru_office_extraction(file_name, content_bytes)
+        except Exception as e:
+            logger.debug("MinerU conversion skipped for %s, falling back to next engine: %s", file_name, e)
+    return None
+
+
+def parse_document_with_mineru(file_obj: Any, formula_enable: bool = True, table_enable: bool = True) -> Dict[str, Any]:
+    """
+    Parse a document using MinerU document intelligence engine with deep formula and table extraction.
+    Returns a dictionary with extracted markdown, metadata, and status.
+    """
+    file_name = file_obj.name
+    content_bytes = file_obj.getvalue() if hasattr(file_obj, "getvalue") else file_obj.read()
+    if hasattr(file_obj, "seek"):
+        file_obj.seek(0)
+
+    res = convert_document_with_mineru(
+        file_name=file_name,
+        content_bytes=content_bytes,
+        formula_enable=formula_enable,
+        table_enable=table_enable,
+    )
+    if res is not None:
+        text, meta = res
+        return {"status": "success", "text": text, "metadata": meta, "engine": "mineru"}
+
+    text, meta = extract_text_from_file(file_obj)
+    return {"status": "fallback", "text": text, "metadata": meta, "engine": meta.get("engine", "native")}
+
+
+def create_mineru_document_tool() -> BaseTool:
+    """Build a LangChain tool for high-precision scientific and academic document parsing via MinerU."""
+    from langchain_core.tools import tool
+
+    @tool
+    def parse_scientific_document(file_path: str) -> str:
+        """Parse a scientific or academic document (PDF, DOCX) extracting LaTeX formulas ($...$ / $$...$$), tables, and structured markdown using MinerU."""
+        path = Path(file_path)
+        if not path.exists():
+            return f"Error: File not found at {file_path}"
+        with open(path, "rb") as f:
+            content = f.read()
+        res = convert_document_with_mineru(path.name, content)
+        if res is not None:
+            text, meta = res
+            return f"=== MinerU Document Analysis: {path.name} (Formulas: {meta.get('formulas', 0)}, Tables: {meta.get('tables', 0)}) ===\n\n{text}"
+
+        class _MockFile:
+            name = path.name
+
+            def read(self) -> bytes:
+                return content
+
+            def getvalue(self) -> bytes:
+                return content
+
+        text, meta = extract_text_from_file(_MockFile())
+        return f"=== Document Content: {path.name} ===\n\n{text}"
+
+    return parse_scientific_document
+
+
 def get_files_hash(uploaded_files: List[Any]) -> str:
     """Generate a combined SHA-256 hash of all uploaded files for caching."""
     hasher = hashlib.sha256()
@@ -105,11 +353,12 @@ def get_files_hash(uploaded_files: List[Any]) -> str:
     return hasher.hexdigest()
 
 
-def extract_text_from_file(file: Any) -> Tuple[str, Dict[str, Any]]:
+def extract_text_from_file(file: Any, prefer_engine: Optional[str] = None) -> Tuple[str, Dict[str, Any]]:
     """
     Extract readable text and metadata from a single uploaded file.
     Supports PDF, DOCX, PPTX, CSV, XLSX, TXT, MD, HTML, JSON, PY.
-    Leverages Docling for layout- and table-aware conversion with automatic fallback to native parsers.
+    Leverages MinerU (specialized in academic PDFs, LaTeX formulas, complex tables)
+    and Docling (universal structured document layouts) with automatic fallback to native parsers.
     """
     file_name = file.name
     suffix = Path(file_name).suffix.lower()
@@ -117,13 +366,31 @@ def extract_text_from_file(file: Any) -> Tuple[str, Dict[str, Any]]:
     content_bytes = file.getvalue() if hasattr(file, "getvalue") else file.read()
     metadata: Dict[str, Any] = {"filename": file_name, "type": suffix, "size": len(content_bytes)}
 
-    # 1. Attempt Docling conversion first for rich structured document formats
-    if suffix in [".pdf", ".docx", ".pptx", ".html", ".md"]:
+    # 1. Attempt MinerU conversion first when requested or for PDF files by default
+    if suffix in [".pdf", ".docx", ".pptx", ".xlsx"] and (
+        prefer_engine == "mineru" or (prefer_engine is None and suffix == ".pdf" and is_mineru_available())
+    ):
+        mineru_result = convert_document_with_mineru(file_name, content_bytes)
+        if mineru_result is not None:
+            mineru_text, mineru_meta = mineru_result
+            if mineru_text.strip():
+                return mineru_text, mineru_meta
+
+    # 2. Attempt Docling conversion for rich structured document formats
+    if suffix in [".pdf", ".docx", ".pptx", ".html", ".md"] and prefer_engine != "native":
         docling_result = convert_document_with_docling(file_name, content_bytes)
         if docling_result is not None:
             docling_text, docling_meta = docling_result
             if docling_text.strip():
                 return docling_text, docling_meta
+
+    # 3. If MinerU was not attempted yet (e.g. non-PDF or prefer_engine was docling and docling failed)
+    if suffix in [".pdf", ".docx", ".pptx", ".xlsx"] and prefer_engine not in ["native", "mineru"]:
+        mineru_result = convert_document_with_mineru(file_name, content_bytes)
+        if mineru_result is not None:
+            mineru_text, mineru_meta = mineru_result
+            if mineru_text.strip():
+                return mineru_text, mineru_meta
 
     try:
         # Fallback to native extractors

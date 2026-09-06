@@ -6,13 +6,15 @@
 [![LangGraph](https://img.shields.io/badge/LangGraph-StateGraph%20Engine-orange.svg)](https://github.com/langchain-ai/langgraph)
 [![browser-use](https://img.shields.io/badge/browser--use-Web%20Agency-teal.svg)](https://github.com/browser-use/browser-use)
 [![Docling](https://img.shields.io/badge/Docling-Document%20Intelligence-008080.svg)](https://github.com/DS4SD/docling)
+[![MinerU](https://img.shields.io/badge/MinerU-Scientific%20PDF%20%26%20LaTeX-6366f1.svg)](https://github.com/opendatalab/MinerU)
 [![LangExtract](https://img.shields.io/badge/LangExtract-Grounded%20Extraction-4285F4.svg)](https://github.com/google/langextract)
+[![PaddleOCR](https://img.shields.io/badge/PaddleOCR-Deep%20Scene%20OCR-14b8a6.svg)](https://github.com/PaddlePaddle/PaddleOCR)
 [![YOLOv8](https://img.shields.io/badge/YOLOv8-Object%20Detection-yellow.svg)](https://github.com/ultralytics/ultralytics)
 [![FAISS](https://img.shields.io/badge/FAISS-Vector%20Search-blueviolet.svg)](https://github.com/facebookresearch/faiss)
 [![PyTorch](https://img.shields.io/badge/PyTorch-2.0+-ee4c2c.svg)](https://pytorch.org/)
 [![License](https://img.shields.io/badge/License-MIT-lightgrey.svg)](LICENSE)
 
-**J.A.R.V.I.S.** (Joint Autonomous Real-time Vision & Intelligence System) is an enterprise-grade autonomous AI super-intelligence platform and executive personal assistant. Engineered with **Deep Agents**, **LangGraph**, **browser-use**, **Docling**, and **LangExtract**, it empowers users by breaking down high-level human objectives into executable dependency DAGs, delegating tasks to domain-isolated specialist sub-agents, interacting with live web applications, performing deep document intelligence, extracting grounded entities with exact character offsets, and generating real-world deliverables (Microsoft Excel workbooks, Word documents, Markdown briefings, and Python automation scripts) in a secure, sandboxed environment.
+**J.A.R.V.I.S.** (Joint Autonomous Real-time Vision & Intelligence System) is an enterprise-grade autonomous AI super-intelligence platform and executive personal assistant. Engineered with **Deep Agents**, **LangGraph**, **browser-use**, **Docling**, **MinerU**, **LangExtract**, and **PaddleOCR**, it empowers users by breaking down high-level human objectives into executable dependency DAGs, delegating tasks to domain-isolated specialist sub-agents, interacting with live web applications, performing deep document intelligence, extracting grounded entities with exact character offsets, executing SOTA scene text OCR with angle classification, and generating real-world deliverables (Microsoft Excel workbooks, Word documents, Markdown briefings, and Python automation scripts) in a secure, sandboxed environment.
 
 ---
 
@@ -42,7 +44,7 @@ flowchart TD
         OutreachAgent["outreach_specialist (4-Stage Cadence + Recruiter Ingestion)"]
         VisionAgent["vision_analyst (YOLOv8 + OCR + K-Means)"]
         BrowserAgent["browser_specialist (Web Navigation + Forms + Clicking)"]
-        DocAgent["document_researcher (Docling + LangExtract + FAISS RAG)"]
+        DocAgent["document_researcher (MinerU + Docling + LangExtract + FAISS RAG)"]
     end
 
     subgraph Autonomous_System ["Autonomous Goal Engine (src/assistant/)"]
@@ -56,8 +58,9 @@ flowchart TD
         PyREPL["Controlled Python REPL (Import Blocklist + 30s Timeout + 50KB Buffer)"]
         WebTools["SSRF-Guarded Web Tools (Scheme Validation + Private IP Filter)"]
         BrowserTools["Browser Tools (Navigation, Clicking, Forms, Scraping, Scrolling)"]
-        DoclingTools["Docling Document Intelligence (PDF, Word, PPTX, HTML, Markdown)"]
+        DoclingTools["Docling & MinerU Document Intelligence (PDF, LaTeX Math, Word, PPTX, HTML, Markdown)"]
         LangExtractTools["LangExtract Grounded Entity Extraction (Character Spans + Visualizer)"]
+        VisionTools["PaddleOCR & YOLOv8 Vision Intelligence (DBNet++, SVTR, Angle Cls, Tesseract Fallback)"]
     end
 
     subgraph Storage_Layer ["Sandboxed Deliverable Storage"]
@@ -148,16 +151,20 @@ J.A.R.V.I.S. integrates curated, enterprise-grade capabilities across its founda
 - **Python Automation Generator**: Writes and inspects standalone Python automation scripts.
 
 ### 6. Universal Document Intelligence, Grounded Extraction & Data RAG Engine
+- **MinerU Scientific Document Intelligence**: High-precision PDF layout analysis, reading order reconstruction, complex cross-page table recognition, and LaTeX mathematical formula extraction (inline and display math expressions like `$E = mc^2$` and `$$\int ...$$`), purpose-built for academic, scientific, and technical papers.
 - **Docling Document Intelligence**: Deep layout and structural parsing for PDF, Word (.docx), PowerPoint (.pptx), HTML, and Markdown, converting complex visual arrangements and tables into cleanly structured Markdown with resilient automatic fallback to native parsers (`pypdf`, `python-docx`, `pandas`).
 - **Google LangExtract Grounded Information Extraction**: Extracts structured entities and key attributes from unstructured text with exact character-level source text grounding (`start_pos`, `end_pos`), schema constraints, and automatic generation of interactive HTML visualizer reports in `workspace/`.
+- **Multi-Tier Processing Hierarchy**: Intelligent routing between MinerU (scientific PDFs with LaTeX equations), Docling (general structured documents), and zero-dependency native parsers (`pypdf`, `python-docx`, `pandas`).
 - **Tabular Data Understanding**: Automatically extracts dataset schemas, dimensions, and statistical summaries (`df.describe()`).
 - **MD5/SHA-256 Content Caching**: Computes composite hashes over file contents and names to eliminate redundant vector embeddings indexing.
 - **Vector Retrieval**: Dense semantic similarity search powered by FAISS and `all-MiniLM-L6-v2` embeddings.
 
 ### 7. Computer Vision & Optical Intelligence
+- **PaddleOCR SOTA Scene Text OCR**: State-of-the-art optical character recognition powered by DBNet++ text detection, SVTR recognition, and direction angle classification for high-precision extraction from fine print, receipts, labels, signage, and documents.
+- **Tesseract OCR Fallback**: Resilient secondary OCR engine providing fail-safe printed and handwritten text recognition when primary models are unavailable.
 - **YOLOv8 Object Detection**: Real-time object localization, counting, classification, and visual bounding box annotations rendered inline in chat.
-- **Tesseract OCR Text Extraction**: Extracts printed and handwritten text from receipts, charts, diagrams, and photos.
 - **Quality & Color Analytics**: Discrete Laplacian variance blur calculation, brightness, contrast, and K-Means dominant color extraction ($K=4$).
+- **LangChain Vision Tools**: Agent tools including `analyze_uploaded_images` for comprehensive multimodal inspection and `extract_scene_text_ocr` for targeted scene text and bounding box extraction.
 
 ### 8. Controlled Python Execution & Visual Analytics
 - **Controlled REPL Environment**: Executes calculations, statistical simulations, and data manipulation with blocked dangerous imports (`os`, `subprocess`, `socket`, `ctypes`, `shutil`), restricted builtins, a 30s timeout, and a 50KB output limit.
