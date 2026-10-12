@@ -4,7 +4,7 @@ Tests for Universal Document Parser across TXT, CSV, JSON, Python, and unsupport
 
 import json
 
-from src.tools.document_tools import extract_text_from_file
+from src.tools.doc_rag import extract_text_from_file
 
 
 def test_document_parser_txt(sample_text_file):

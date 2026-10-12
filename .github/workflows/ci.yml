@@ -151,12 +151,12 @@ jobs:
           import src.core.orchestrator
           import src.assistant.autonomous_runner
           import src.assistant.workspace_tools
-          import src.tools.browser_tools
-          import src.tools.content_sanitizer
-          import src.tools.python_executor
-          import src.tools.web_tools
-          import src.tools.document_tools
-          import src.tools.extraction_tools
+          import src.tools.browser
+          import src.tools.cleaner
+          import src.tools.pyexec
+          import src.tools.web
+          import src.tools.doc_rag
+          import src.tools.extract
           import src.modules.career
           import src.modules.outreach
           import src.modules.vision

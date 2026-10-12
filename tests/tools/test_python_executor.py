@@ -4,7 +4,7 @@ Tests for Controlled Python Executor: math, pandas/numpy, matplotlib figure capt
 
 import matplotlib.figure
 
-from src.tools.python_executor import get_and_clear_figure_buffer, python_interpreter
+from src.tools.pyexec import get_and_clear_figure_buffer, python_interpreter
 
 
 def test_python_executor_arithmetic():

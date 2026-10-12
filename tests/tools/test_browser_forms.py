@@ -3,7 +3,7 @@ Unit tests validating Browser Capability 3: Forms.
 Tests form field filling, placeholder identification, and form payload submission.
 """
 
-from src.tools.browser_tools import (
+from src.tools.browser import (
     browser_fill_form,
     browser_submit_form,
     get_browser_session,

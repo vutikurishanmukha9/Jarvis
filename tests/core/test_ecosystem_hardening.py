@@ -14,10 +14,16 @@ import pytest
 from mineru.model.docx.tools.math.omml import Tag2Method as MinerUTag2Method
 from mineru.model.table.rec.unet_table.table_recover import TableRecover
 
-from PaddleOCR.mcp_server.paddleocr_mcp.inference.shared.input_contract import (
-    resolve_absolute_path,
-)
-from PaddleOCR.paddleocr._doc2md.math.omml import Tag2Method as PaddleTag2Method
+try:
+    from visionocr.mcp_server.paddleocr_mcp.inference.shared.input_contract import (
+        resolve_absolute_path,
+    )
+    from visionocr.paddleocr._doc2md.math.omml import Tag2Method as PaddleTag2Method
+except ImportError:
+    from PaddleOCR.mcp_server.paddleocr_mcp.inference.shared.input_contract import (
+        resolve_absolute_path,
+    )
+    from PaddleOCR.paddleocr._doc2md.math.omml import Tag2Method as PaddleTag2Method
 
 
 def test_mcp_resolve_absolute_path_null_bytes() -> None:

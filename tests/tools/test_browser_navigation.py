@@ -5,7 +5,7 @@ Tests URL navigation, SSRF policy enforcement, history management, and tab switc
 
 from unittest.mock import MagicMock, patch
 
-from src.tools.browser_tools import (
+from src.tools.browser import (
     browser_go_back,
     browser_switch_tab,
     get_browser_session,

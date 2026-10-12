@@ -6,7 +6,7 @@ and resilient fallback mechanisms.
 
 from unittest.mock import MagicMock, patch
 
-from src.tools.document_tools import (
+from src.tools.doc_rag import (
     convert_document_with_docling,
     extract_text_from_file,
     get_docling_converter,
@@ -98,7 +98,7 @@ def test_extract_text_from_file_uses_docling() -> None:
 
 def test_extract_text_from_file_docling_fallback_on_error() -> None:
     """Verify that extract_text_from_file gracefully falls back when Docling encounters an error."""
-    with patch("src.tools.document_tools.convert_document_with_docling") as mock_convert:
+    with patch("src.tools.doc_rag.convert_document_with_docling") as mock_convert:
         mock_convert.return_value = None  # Simulate Docling skipping or failing
 
         raw_md = b"# Native Fallback Title\n\nFallback content line."
@@ -118,8 +118,8 @@ def test_process_documents_and_build_vector_store_with_docling() -> None:
     mock_file = MockUploadedFile("docs.md", doc_bytes)
 
     with (
-        patch("src.tools.document_tools.HuggingFaceEmbeddings"),
-        patch("src.tools.document_tools.FAISS.from_texts") as mock_faiss,
+        patch("src.tools.doc_rag.HuggingFaceEmbeddings"),
+        patch("src.tools.doc_rag.FAISS.from_texts") as mock_faiss,
     ):
         mock_faiss.return_value = MagicMock()
         vs, summaries, msg = process_documents_and_build_vector_store([mock_file], api_provider="HuggingFace")

@@ -9,7 +9,7 @@ from pathlib import Path
 from typing import Any, Dict, Optional, Tuple
 from unittest.mock import patch
 
-from src.tools.document_tools import (
+from src.tools.doc_rag import (
     convert_document_with_mineru,
     create_mineru_document_tool,
     extract_text_from_file,
@@ -116,7 +116,7 @@ def test_extract_text_from_file_routes_to_mineru() -> None:
 
 def test_extract_text_from_file_falls_back_when_mineru_returns_none() -> None:
     """Validate that extract_text_from_file falls back to native/Docling when MinerU returns None."""
-    with patch("src.tools.document_tools.convert_document_with_mineru", return_value=None):
+    with patch("src.tools.doc_rag.convert_document_with_mineru", return_value=None):
         raw_text = "Standard plain text document content without neural formatting."
         mock_file = MockUploadedFile("fallback.txt", raw_text.encode("utf-8"))
         text, meta = extract_text_from_file(mock_file)
@@ -151,7 +151,7 @@ def test_parse_document_with_mineru_success() -> None:
 
 def test_parse_document_with_mineru_fallback_status() -> None:
     """Validate parse_document_with_mineru status is 'fallback' when MinerU returns None."""
-    with patch("src.tools.document_tools.convert_document_with_mineru", return_value=None):
+    with patch("src.tools.doc_rag.convert_document_with_mineru", return_value=None):
         mock_file = MockUploadedFile("notes.txt", b"Notes on graph theory.")
         res = parse_document_with_mineru(mock_file)
         assert res["status"] == "fallback"

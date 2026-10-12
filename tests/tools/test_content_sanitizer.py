@@ -6,7 +6,7 @@ and trusted boundary marker wrapping.
 
 from bs4 import BeautifulSoup
 
-from src.tools.content_sanitizer import (
+from src.tools.cleaner import (
     sanitize_scraped_content,
     strip_hidden_elements,
     strip_html_comments,

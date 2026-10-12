@@ -4,7 +4,7 @@ Unit tests for document hash caching and deduplication in document tools.
 
 import io
 
-from src.tools.document_tools import get_files_hash
+from src.tools.doc_rag import get_files_hash
 
 
 class InMemoryFile:

@@ -2,7 +2,7 @@
 Tests for Python Executor Security: import blocklist, restricted builtins, execution timeout, and output limits.
 """
 
-from src.tools.python_executor import BLOCKED_MODULES, python_interpreter
+from src.tools.pyexec import BLOCKED_MODULES, python_interpreter
 
 
 def test_python_executor_blocked_modules_list():

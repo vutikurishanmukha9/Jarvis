@@ -2,7 +2,7 @@
 Unit tests for Web Research tools and SSRF URL protection.
 """
 
-from src.tools.web_tools import _validate_url, get_web_tools
+from src.tools.web import _validate_url, get_web_tools
 
 
 def test_web_tools_collection() -> None:

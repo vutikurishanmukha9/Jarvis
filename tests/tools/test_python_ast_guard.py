@@ -4,7 +4,7 @@ Validates blocking of dangerous function calls, attribute access (__subclasses__
 blocked module imports, and safe mathematical execution.
 """
 
-from src.tools.python_executor import _validate_python_ast, python_interpreter
+from src.tools.pyexec import _validate_python_ast, python_interpreter
 
 
 def test_ast_guard_blocks_import_of_blocked_modules():

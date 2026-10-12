@@ -6,8 +6,8 @@ and safe workspace sandbox persistence.
 
 from unittest.mock import MagicMock, patch
 
-from src.tools.document_tools import extract_entities_from_document
-from src.tools.extraction_tools import (
+from src.tools.doc_rag import extract_entities_from_document
+from src.tools.extract import (
     extract_grounded_entities,
     extract_structured_entities_tool,
     get_extraction_tools,

@@ -17,13 +17,15 @@ from PIL import Image
 
 logger = logging.getLogger(__name__)
 
-# Ensure Jarvis project root and vendored PaddleOCR are discoverable on sys.path
+# Ensure Jarvis project root and vendored visionocr (PaddleOCR) are discoverable on sys.path
 PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
 REPO_ROOT = PROJECT_ROOT.parent
-_PADDLEOCR_DIR = REPO_ROOT / "PaddleOCR"
+_PADDLEOCR_DIR = REPO_ROOT / "visionocr"
+if not _PADDLEOCR_DIR.exists():
+    _PADDLEOCR_DIR = REPO_ROOT / "PaddleOCR"
 if _PADDLEOCR_DIR.exists() and str(_PADDLEOCR_DIR) not in sys.path:
     sys.path.insert(0, str(_PADDLEOCR_DIR))
 _LANGCHAIN_PADDLE_DIR = _PADDLEOCR_DIR / "langchain-paddleocr"

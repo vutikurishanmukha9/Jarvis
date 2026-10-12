@@ -2,7 +2,7 @@
 Tests for document hashing, cache invalidation, and content change sensitivity.
 """
 
-from src.tools.document_tools import get_files_hash
+from src.tools.doc_rag import get_files_hash
 from tests.conftest import MockUploadedFile
 
 

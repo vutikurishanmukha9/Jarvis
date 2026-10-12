@@ -5,7 +5,7 @@ Tests clicking CSS selectors, text anchors, and automatic link redirection.
 
 from unittest.mock import MagicMock, patch
 
-from src.tools.browser_tools import (
+from src.tools.browser import (
     browser_click_element,
     get_browser_session,
 )

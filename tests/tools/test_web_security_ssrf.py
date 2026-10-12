@@ -2,7 +2,7 @@
 Tests for Web URL validation and SSRF defensive guards: schemes, private IPs, loopbacks.
 """
 
-from src.tools.web_tools import _validate_url
+from src.tools.web import _validate_url
 
 
 def test_web_url_validation_allows_valid_https():

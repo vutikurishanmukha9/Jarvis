@@ -7,7 +7,7 @@ from ..modules.vision import (
     extract_text_paddleocr,
     is_paddleocr_available,
 )
-from .document_tools import (
+from .doc_rag import (
     convert_document_with_docling,
     convert_document_with_mineru,
     create_mineru_document_tool,
@@ -17,7 +17,7 @@ from .document_tools import (
     parse_document_with_mineru,
     process_documents_and_build_vector_store,
 )
-from .extraction_tools import (
+from .extract import (
     extract_grounded_entities,
     get_extraction_tools,
     is_langextract_available,

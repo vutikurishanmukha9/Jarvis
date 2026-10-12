@@ -2,7 +2,7 @@
 Tests for Deep Web Research tools: DuckDuckGo search, Wikipedia lookup, and HTML parser.
 """
 
-from src.tools.web_tools import get_web_tools, wikipedia_lookup
+from src.tools.web import get_web_tools, wikipedia_lookup
 
 
 def test_web_tools_suite_registration():

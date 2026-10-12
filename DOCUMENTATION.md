@@ -33,12 +33,12 @@
    - `src/assistant/workspace_tools.py`
 7. [Sandboxed Tool Execution Suite (`src/tools/`)](#7-sandboxed-tool-execution-suite-srctools)
    - `src/tools/__init__.py`
-   - `src/tools/content_sanitizer.py`
-   - `src/tools/python_executor.py`
-   - `src/tools/web_tools.py`
-   - `src/tools/browser_tools.py`
-   - `src/tools/document_tools.py`
-   - `src/tools/extraction_tools.py`
+   - `src/tools/cleaner.py` (formerly `content_sanitizer.py`)
+   - `src/tools/pyexec.py` (formerly `python_executor.py`)
+   - `src/tools/web.py` (formerly `web_tools.py`)
+   - `src/tools/browser.py` (formerly `browser_tools.py`)
+   - `src/tools/doc_rag.py` (formerly `document_tools.py`)
+   - `src/tools/extract.py` (formerly `extraction_tools.py`)
 8. [Career Intelligence and ATS Engine (`src/modules/career/`)](#8-career-intelligence-and-ats-engine-srcmodulescareer)
    - `src/modules/career/__init__.py`
    - `src/modules/career/career_bridge.py`
@@ -65,13 +65,14 @@
     - Vision Engine API: `schemas.py`, `manager.py`, `main.py`
     - Vision Engine Services: `interfaces.py`, `vision.py`, `llm.py`
 11. [Vendored Autonomous Frameworks](#11-vendored-autonomous-frameworks)
-    - `browser-use/`
-    - `deepagents/`
-    - `langgraph/`
-    - `docling/`
-    - `langextract/`
-    - `MinerU/`
-    - `PaddleOCR/`
+    - `webbrowse/` (formerly `browser-use/`)
+    - `subagents/` (formerly `deepagents/`)
+    - `workflow/` (formerly `langgraph/`)
+    - `docparser/` (formerly `docling/`)
+    - `extractor/` (formerly `langextract/`)
+    - `sciparse/` (formerly `MinerU/`)
+    - `visionocr/` (formerly `PaddleOCR/`)
+    - `safeguard/` (formerly `guardrails/`)
 12. [CI/CD and Security Pipelines (`.github/workflows/`)](#12-cicd-and-security-pipelines-githubworkflows)
     - `.github/workflows/ci.yml`
     - `.github/workflows/security.yml`
@@ -172,12 +173,12 @@ The following table provides the exhaustive file inventory across the entire rep
 | `src/assistant/profile_manager.py` | Long-Term Memory | User profile store, episodic memory CRUD, and confidence scoring |
 | `src/assistant/workspace_tools.py` | Filesystem Sandbox | Path-confined file operations and deliverable generators (.xlsx, .docx) |
 | `src/tools/__init__.py` | Package Declaration | Tools module initialization |
-| `src/tools/content_sanitizer.py` | Security Layer | Prompt injection filter, hidden CSS, zero-width Unicode sanitizer |
-| `src/tools/python_executor.py` | Code Execution Sandbox | AST-guarded Python REPL with timeout and figure interception |
-| `src/tools/web_tools.py` | Web Intelligence | SSRF-guarded web scraper, DuckDuckGo search, and Wikipedia |
-| `src/tools/browser_tools.py` | Web Automation | Browser navigation, clicking, form submission, and table extraction |
-| `src/tools/document_tools.py` | Document Intelligence & RAG | Docling multi-format document intelligence engine (PDF, Word, PPTX, HTML, Markdown) with resilient native fallback and FAISS vector RAG |
-| `src/tools/extraction_tools.py` | Grounded Extraction & Visual RAG | Google LangExtract grounded entity extraction, character span mapping, and interactive HTML visualization |
+| `src/tools/cleaner.py` | Security Layer | Prompt injection filter, hidden CSS, zero-width Unicode sanitizer (formerly `content_sanitizer.py`) |
+| `src/tools/pyexec.py` | Code Execution Sandbox | AST-guarded Python REPL with timeout and figure interception (formerly `python_executor.py`) |
+| `src/tools/web.py` | Web Intelligence | SSRF-guarded web scraper, DuckDuckGo search, and Wikipedia (formerly `web_tools.py`) |
+| `src/tools/browser.py` | Web Automation | Browser navigation, clicking, form submission, and table extraction (formerly `browser_tools.py`) |
+| `src/tools/doc_rag.py` | Document Intelligence & RAG | Docling multi-format document intelligence engine with FAISS vector RAG (formerly `document_tools.py`) |
+| `src/tools/extract.py` | Grounded Extraction & Visual RAG | Google LangExtract grounded entity extraction and HTML visualization (formerly `extraction_tools.py`) |
 | `docling/` | Document Intelligence Core | Vendored Docling engine providing deep layout parsing, embedded table extraction, and Markdown transformation |
 | `langextract/` | Grounded Entity Extraction Core | Vendored LangExtract runtime library providing schema-controlled information extraction and visualization |
 | `src/modules/__init__.py` | Package Declaration | Modules root initialization |
@@ -230,9 +231,14 @@ The following table provides the exhaustive file inventory across the entire rep
 | `src/modules/vision/engine/services/interfaces.py` | Interface Contracts | Abstract base classes defining vision and LLM service protocols |
 | `src/modules/vision/engine/services/vision.py` | Vision Service | Concrete service running image detection and OCR pipelines |
 | `src/modules/vision/engine/services/llm.py` | LLM Vision Service | LLM reasoning service generating descriptions from vision data |
-| `browser-use/` | Vendored Engine | Autonomous browser interaction and DOM manipulation library |
-| `deepagents/` | Vendored Engine | Hierarchical agent orchestration and subagent routing harness |
-| `langgraph/` | Vendored Engine | Stateful graph execution, Pregel engine, and memory checkpointers |
+| `webbrowse/` | Vendored Engine | Autonomous browser interaction and DOM manipulation library (formerly `browser-use`) |
+| `subagents/` | Vendored Engine | Hierarchical agent orchestration and subagent routing harness (formerly `deepagents`) |
+| `workflow/` | Vendored Engine | Stateful graph execution, Pregel engine, and memory checkpointers (formerly `langgraph`) |
+| `docparser/` | Vendored Engine | Advanced document layout analysis and multi-format conversion (formerly `docling`) |
+| `extractor/` | Vendored Engine | Grounded entity extraction with character span offsets (formerly `langextract`) |
+| `sciparse/` | Vendored Engine | Deep scientific document parsing, layout analysis, and LaTeX formula recognition (formerly `MinerU`) |
+| `visionocr/` | Vendored Engine | High-precision scene text and document OCR with DBNet++ and SVTR recognition (formerly `PaddleOCR`) |
+| `safeguard/` | Vendored Engine | Enterprise Guardrails AI framework for dual-stage prompt injection, PII redaction, and secret defense (formerly `guardrails`) |
 | `.github/workflows/ci.yml` | CI/CD Pipeline | Parallel linting, type-checking, testing, and smoke verification |
 | `.github/workflows/security.yml` | Security Pipeline | Static application security testing (Bandit) and dependency audit |
 | `tests/` | Quality Assurance | Full test suite verifying all system components and subagents |
@@ -256,7 +262,7 @@ The following table provides the exhaustive file inventory across the entire rep
 ### 3.2. `pyproject.toml` (Unified Project Tooling)
 - **Role**: Standardized project configuration defining build metadata, testing flags, linters, and type checkers.
 - **Key Sections**:
-  - `[tool.pytest.ini_options]`: Configures test paths (`tests`), asyncio mode (`auto`), execution timeout (`120s`), and custom pythonpath mappings (`.`, `deepagents/libs/deepagents`, `browser-use`). Includes specific warning filters for non-interactive Matplotlib figures and scikit-learn model versions.
+  - `[tool.pytest.ini_options]`: Configures test paths (`tests`), asyncio mode (`auto`), execution timeout (`120s`), and custom pythonpath mappings (`.`, `subagents/libs/deepagents`, `webbrowse`, `docparser`, `extractor`, `sciparse`, `visionocr`, `visionocr/langchain-paddleocr`). Includes specific warning filters for non-interactive Matplotlib figures and scikit-learn model versions.
   - `[tool.mypy]`: Enforces Python 3.12 type safety with `ignore_missing_imports = true` for external packages.
   - `[tool.ruff]`: Configures modern fast linting and formatting with line length 120 and specific ignore rules (`E402`, `F401`, `B018`).
   - `[tool.bandit]`: SAST scanning configuration excluding virtual environments and test directories while suppressing false-positive asserts.
@@ -406,7 +412,7 @@ The following table provides the exhaustive file inventory across the entire rep
 ### 7.1. `src/tools/__init__.py`
 - Package marker exporting core tools.
 
-### 7.2. `src/tools/content_sanitizer.py` (Anti-Injection Engine)
+### 7.2. `src/tools/cleaner.py` (Anti-Injection Engine)
 - **Class**: `ContentSanitizer`
 - **Security Defenses**:
   - **HTML Comment Stripping**: Removes `<!-- ... -->` blocks used to conceal prompt injection attacks.
@@ -415,7 +421,7 @@ The following table provides the exhaustive file inventory across the entire rep
   - **Boundary Enclosure (`enclose_untrusted_content`)**: Wraps untrusted text with explicit boundary tags:
     `[EXTERNAL_WEB_CONTENT_START]` and `[EXTERNAL_WEB_CONTENT_END]`.
 
-### 7.3. `src/tools/python_executor.py` (AST-Guarded Python REPL)
+### 7.3. `src/tools/pyexec.py` (AST-Guarded Python REPL)
 - **Security Guard (`_validate_python_ast`)**:
   - Parses Python code into an Abstract Syntax Tree before execution.
   - Rejects dangerous builtins: `__import__`, `getattr`, `eval`, `exec`, `open`, `globals`, `vars`, `compile`.
@@ -426,7 +432,7 @@ The following table provides the exhaustive file inventory across the entire rep
   - Enforces a 30-second execution timeout.
   - **Figure Interception (`get_and_clear_figure_buffer`)**: Captures active Matplotlib and Plotly figures from memory and transfers them directly to the Streamlit UI.
 
-### 7.4. `src/tools/web_tools.py` (SSRF-Protected Web Tools)
+### 7.4. `src/tools/web.py` (SSRF-Protected Web Tools)
 - **Security Guards (`_is_safe_url`)**:
   - Protocol whitelist: `http` and `https` only.
   - Hostname resolution: Resolves domain to IP and rejects private, loopback, and link-local ranges (`127.0.0.0/8`, `10.0.0.0/8`, `172.16.0.0/12`, `192.168.0.0/16`, `169.254.169.254`, `::1`, `fe80::/10`).
@@ -436,7 +442,7 @@ The following table provides the exhaustive file inventory across the entire rep
   - `duckduckgo_search`: Performs live web searches with query sanitization.
   - `wikipedia_lookup`: Retrieves factual topic summaries with fallback handling.
 
-### 7.5. `src/tools/browser_tools.py` (Browser Automation Suite)
+### 7.5. `src/tools/browser.py` (Browser Automation Suite)
 - **Role**: High-level browser automation interface wrapping `browser-use`.
 - **Key Operations**:
   - `navigate_to_url`: Navigates to a target URL with SSRF filtering and redirects.
@@ -446,7 +452,7 @@ The following table provides the exhaustive file inventory across the entire rep
   - `scroll_page`: Scrolls the viewport up or down for dynamic infinite-scroll pages.
   - `get_session_state`: Inspects current URL, title, and viewport state.
 
-### 7.6. `src/tools/document_tools.py` (MinerU & Docling Document Intelligence & Universal RAG)
+### 7.6. `src/tools/doc_rag.py` (MinerU & Docling Document Intelligence & Universal RAG)
 - **Role**: Deep document understanding, scientific formula recognition, multi-format layout conversion, tabular profiling, and dense vector retrieval.
 - **Key Features**:
   - **MinerU Scientific Intelligence Engine**: High-precision PDF layout analysis, reading order reconstruction, complex cross-page table recognition, and LaTeX mathematical formula extraction (inline and display math expressions like `$E = mc^2$` and `$$\int ...$$`), purpose-built for academic and technical papers.
@@ -465,7 +471,7 @@ The following table provides the exhaustive file inventory across the entire rep
   - **Dense FAISS Vector Store**: Employs LangChain text splitters and `all-MiniLM-L6-v2` embeddings for fast semantic chunk retrieval.
   - **Document Entity Pipeline (`extract_entities_from_document`)**: Connects document layout parsing with LangExtract grounded extraction to extract structured entities from any uploaded file.
 
-### 7.7. `src/tools/extraction_tools.py` (Google LangExtract Grounded Information Extraction)
+### 7.7. `src/tools/extract.py` (Google LangExtract Grounded Information Extraction)
 - **Role**: Precise, schema-constrained structured information extraction from unstructured text with character-level source grounding and visual report generation.
 - **Key Capabilities**:
   - **Exact Character-Span Grounding**: Every extracted entity is mapped to its exact starting and ending byte/character position in the source document (`start_pos`, `end_pos`), enabling visual traceability and auditability.
@@ -584,40 +590,45 @@ Section multipliers weight skills discovered in `Experience` ($1.5\times$) and `
 
 ## 11. Vendored Autonomous Frameworks
 
-### 11.1. `browser-use/`
-- **Location**: `browser-use/`
+### 11.1. `webbrowse/` (formerly `browser-use/`)
+- **Location**: `webbrowse/`
 - **Purpose**: A specialized autonomous browser interaction harness enabling DOM tree inspection, clickable element extraction, form field interaction, and multi-tab browser control.
-- **Integration**: Wrapped by `src/tools/browser_tools.py` and exposed via the `browser_specialist` subagent.
+- **Integration**: Wrapped by `src/tools/browser.py` and exposed via the `browser_specialist` subagent.
 
-### 11.2. `deepagents/`
-- **Location**: `deepagents/libs/deepagents/`
+### 11.2. `subagents/` (formerly `deepagents/`)
+- **Location**: `subagents/libs/deepagents/`
 - **Purpose**: Provides `create_deep_agent` and `SubAgent` abstractions. Allows composing hierarchical agents with isolated context windows, specialized tool subsets, and explicit state handoffs.
 - **Integration**: Imported by `src/core/orchestrator.py` and configured in `pyproject.toml` pythonpath.
 
-### 11.3. `langgraph/`
-- **Location**: `langgraph/libs/`
+### 11.3. `workflow/` (formerly `langgraph/`)
+- **Location**: `workflow/libs/`
 - **Purpose**: Stateful multi-actor graph execution framework. Provides Pregel BSP loop execution, thread-scoped `MemorySaver` checkpoints, human-in-the-loop interruption triggers, and conditional branching (`tools_condition`).
 - **Integration**: Compiles the primary stateful execution graph in `src/core/orchestrator.py`.
 
-### 11.4. `docling/`
-- **Location**: `docling/`
+### 11.4. `docparser/` (formerly `docling/`)
+- **Location**: `docparser/`
 - **Purpose**: Advanced document layout analysis and multi-format conversion to cleanly formatted Markdown.
-- **Integration**: Wrapped by `src/tools/document_tools.py` with double-checked lazy locking.
+- **Integration**: Wrapped by `src/tools/doc_rag.py` with double-checked lazy locking.
 
-### 11.5. `langextract/`
-- **Location**: `langextract/`
+### 11.5. `extractor/` (formerly `langextract/`)
+- **Location**: `extractor/`
 - **Purpose**: Grounded information extraction library mapping entities back to exact character span intervals.
-- **Integration**: Wrapped by `src/tools/extraction_tools.py`.
+- **Integration**: Wrapped by `src/tools/extract.py`.
 
-### 11.6. `MinerU/`
-- **Location**: `MinerU/mineru/`
+### 11.6. `sciparse/` (formerly `MinerU/`)
+- **Location**: `sciparse/mineru/`
 - **Purpose**: Deep scientific document parsing, multi-column reading order reconstruction, complex table merging, and LaTeX formula recognition (`$...$` and `$$...$$`).
-- **Integration**: Wrapped by `src/tools/document_tools.py` and exposed via `parse_scientific_document` agent tool.
+- **Integration**: Wrapped by `src/tools/doc_rag.py` and exposed via `parse_scientific_document` agent tool.
 
-### 11.7. `PaddleOCR/`
-- **Location**: `PaddleOCR/ppocr/`
+### 11.7. `visionocr/` (formerly `PaddleOCR/`)
+- **Location**: `visionocr/ppocr/`
 - **Purpose**: High-precision scene text and document OCR featuring DBNet++ detection, SVTR text recognition, and direction angle classifiers.
 - **Integration**: Wrapped by `src/modules/vision/vision_bridge.py` and exposed via `extract_scene_text_ocr` agent tool and `analyze_image_deep` dual-engine pipeline.
+
+### 11.8. `safeguard/` (formerly `guardrails/`)
+- **Location**: `safeguard/guardrails/`
+- **Purpose**: Enterprise Guardrails AI validation framework providing programmable input/output safety specifications, PII redaction, secret leakage suppression, and structured schema verification.
+- **Integration**: Wrapped by `src/core/guardrails_bridge.py` and deeply integrated into `JarvisOrchestrator` execution loops and Streamlit UI telemetry.
 
 ---
 
@@ -721,12 +732,13 @@ The table below documents how J.A.R.V.I.S. mitigates the core threat categories:
 
 | Threat ID | Threat Category | Attack Vector / Scenario | Defense Mechanism | Implementation File |
 | :--- | :--- | :--- | :--- | :--- |
-| **SEC-01** | Indirect Prompt Injection | Malicious instruction hidden in scraped HTML, PDF text, or user input | `ContentSanitizer`: strips HTML comments, neutralizes hidden CSS (`display:none`, `opacity:0`, `font-size:0`), strips zero-width Unicode (`\u200B-\u200D`, `\uFEFF`, `\u202E`). Untrusted content is enclosed between `[EXTERNAL_WEB_CONTENT_START]` and `[EXTERNAL_WEB_CONTENT_END]` boundary markers | [`src/tools/content_sanitizer.py`](src/tools/content_sanitizer.py) |
-| **SEC-02** | Sandbox Code Execution Escape | Arbitrary system command execution via Python REPL | `_validate_python_ast`: Static AST pre-scan rejecting `__import__`, `getattr`, `eval`, `exec`, `open`, `globals`, `vars`, and dunder attribute traversal (`__subclasses__`, `__globals__`, `__code__`). Hard-blocked system imports: `os`, `subprocess`, `sys`, `socket`, `ctypes`, `shutil` | [`src/tools/python_executor.py`](src/tools/python_executor.py) |
+| **SEC-01** | Indirect Prompt Injection | Malicious instruction hidden in scraped HTML, PDF text, or user input | `ContentSanitizer`: strips HTML comments, neutralizes hidden CSS (`display:none`, `opacity:0`, `font-size:0`), strips zero-width Unicode (`\u200B-\u200D`, `\uFEFF`, `\u202E`). Untrusted content is enclosed between `[EXTERNAL_WEB_CONTENT_START]` and `[EXTERNAL_WEB_CONTENT_END]` boundary markers | [`src/tools/cleaner.py`](src/tools/cleaner.py) |
+| **SEC-02** | Sandbox Code Execution Escape | Arbitrary system command execution via Python REPL | `_validate_python_ast`: Static AST pre-scan rejecting `__import__`, `getattr`, `eval`, `exec`, `open`, `globals`, `vars`, and dunder attribute traversal (`__subclasses__`, `__globals__`, `__code__`). Hard-blocked system imports: `os`, `subprocess`, `sys`, `socket`, `ctypes`, `shutil` | [`src/tools/pyexec.py`](src/tools/pyexec.py) |
 | **SEC-03** | Path Traversal & Jailbreak | Reading or overwriting system files outside workspace (e.g., `../../Windows/System32`) | `_resolve_workspace_path`: Blocks Windows drive letters (`C:`, `D:`), UNC paths (`\\server\share`), null bytes (`\x00`), and multi-dot sequences. Verifies target strictly resides within `workspace/` via `path.is_relative_to(WORKSPACE_DIR)` | [`src/assistant/workspace_tools.py`](src/assistant/workspace_tools.py) |
-| **SEC-04** | Server-Side Request Forgery (SSRF) | Scraping internal network endpoints or Cloud Metadata (`169.254.169.254`) | `_is_safe_url`: Enforces `http`/`https` scheme whitelist, performs DNS resolution, and filters out private IPv4/IPv6 CIDR ranges and AWS/GCP metadata endpoints | [`src/tools/web_tools.py`](src/tools/web_tools.py) |
+| **SEC-04** | Server-Side Request Forgery (SSRF) | Scraping internal network endpoints or Cloud Metadata (`169.254.169.254`) | `_is_safe_url`: Enforces `http`/`https` scheme whitelist, performs DNS resolution, and filters out private IPv4/IPv6 CIDR ranges and AWS/GCP metadata endpoints | [`src/tools/web.py`](src/tools/web.py) |
 | **SEC-05** | Unauthorized Automated Action | Agent sending unauthorized live emails or modifying state | Mandatory simulation mode for agent-initiated dispatches (saving audit logs to Excel); live delivery requires explicit human confirmation in the Streamlit UI | [`src/modules/outreach/email_dispatcher.py`](src/modules/outreach/email_dispatcher.py) |
 | **SEC-06** | Model Serialization Tampering | Malicious pickle injection via modified model weights | `_verify_model_artifact`: Cryptographic SHA-256 hash calculation against reference hash with critical security audit logging before loading model weights | [`src/modules/career/scorer/services/model_manager.py`](src/modules/career/scorer/services/model_manager.py) |
-| **SEC-07** | Denial of Service via PDF Parsing | Infinite loops in malformed PDF parsing (CVE / PYSEC-2026-1835) | Migrated to official modern `pypdf>=5.0.0` with safe object parsing and resource bounds | [`src/tools/document_tools.py`](src/tools/document_tools.py) |
+| **SEC-07** | Denial of Service via PDF Parsing | Infinite loops in malformed PDF parsing (CVE / PYSEC-2026-1835) | Migrated to official modern `pypdf>=5.0.0` with safe object parsing and resource bounds | [`src/tools/doc_rag.py`](src/tools/doc_rag.py) |
 | **SEC-08** | Concurrent State Corruption | Race conditions or file locks on profile/memory writes on Windows | Exponential retry loops with atomic replacement semantics in `ProfileManager` | [`src/assistant/profile_manager.py`](src/assistant/profile_manager.py) |
-| **SEC-09** | MCP & API Path Traversal / Arbitrary LFI | External clients attempting to access arbitrary host files via MCP server or API endpoints | `resolve_absolute_path` enforces sandbox boundaries (`MCP_ALLOWED_DIR`) with null-byte sanitization and `Path.relative_to` verification; `create_result_zip` enforces `output_dir` path confinement | [`PaddleOCR/mcp_server/paddleocr_mcp/inference/shared/input_contract.py`](PaddleOCR/mcp_server/paddleocr_mcp/inference/shared/input_contract.py), [`MinerU/mineru/cli/fast_api.py`](MinerU/mineru/cli/fast_api.py) |
+| **SEC-09** | MCP & API Path Traversal / Arbitrary LFI | External clients attempting to access arbitrary host files via MCP server or API endpoints | `resolve_absolute_path` enforces sandbox boundaries (`MCP_ALLOWED_DIR`) with null-byte sanitization and `Path.relative_to` verification; `create_result_zip` enforces `output_dir` path confinement | [`visionocr/mcp_server/paddleocr_mcp/inference/shared/input_contract.py`](visionocr/mcp_server/paddleocr_mcp/inference/shared/input_contract.py), [`sciparse/mineru/cli/fast_api.py`](sciparse/mineru/cli/fast_api.py) |
+| **SEC-10** | Direct Prompt Injection, PII & Secret Leakage | Adversarial prompt overrides, PII exposure, and accidental secret key leakage in LLM output | Dual-stage `GuardrailsBridge` evaluates input queries against prompt-injection regexes, auto-redacts PII (SSN, cards), suppresses secrets (OpenAI, AWS, GitHub tokens) in output text, and provides UI controls | [`src/core/guardrails_bridge.py`](src/core/guardrails_bridge.py), [`src/core/orchestrator.py`](src/core/orchestrator.py) |

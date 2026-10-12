@@ -39,10 +39,11 @@ from ..config import PERSONAS, PROVIDERS
 from ..modules.career import get_career_tools
 from ..modules.outreach import get_outreach_tools
 from ..modules.vision import get_and_clear_annotated_images, get_vision_tools
-from ..tools.browser_tools import get_browser_tools
-from ..tools.extraction_tools import get_extraction_tools
-from ..tools.python_executor import get_and_clear_figure_buffer, python_interpreter
-from ..tools.web_tools import get_web_tools
+from ..tools.browser import get_browser_tools
+from ..tools.extract import get_extraction_tools
+from ..tools.pyexec import get_and_clear_figure_buffer, python_interpreter
+from ..tools.web import get_web_tools
+from .guardrails_bridge import GuardValidationResult, get_guardrails
 from .session_manager import SessionManager
 
 logger = logging.getLogger(__name__)
@@ -92,6 +93,7 @@ class JarvisOrchestrator:
         document_tool: Optional[Any] = None,
         checkpointer: Optional[Any] = None,
         interrupt_on: Optional[Dict[str, Any]] = None,
+        enable_guardrails: bool = True,
     ) -> None:
         self.api_provider = api_provider
         self.api_key = api_key
@@ -103,6 +105,8 @@ class JarvisOrchestrator:
         self.document_tool = document_tool
         self.checkpointer = checkpointer
         self.interrupt_on = interrupt_on
+        self.enable_guardrails = enable_guardrails
+        self.guardrails = get_guardrails()
 
         # Construct Agent Components
         self.llm = self._init_llm()
@@ -340,7 +344,66 @@ class JarvisOrchestrator:
         tracer = ThoughtStepTracer()
         bounded_history = SessionManager.prune_context_window(chat_history)
         output_text = ""
+        guard_in: Optional[GuardValidationResult] = None
+        guard_out: Optional[GuardValidationResult] = None
 
+        # -----------------------------------------------------------------
+        # Stage 1: Input Guardrail Evaluation (Prompt Injection & PII Guard)
+        # -----------------------------------------------------------------
+        if self.enable_guardrails:
+            guard_in = self.guardrails.validate_input(user_input)
+            if not guard_in.passed:
+                tracer.steps.append(
+                    {
+                        "type": "guardrails_intercept",
+                        "stage": "input",
+                        "violations": guard_in.violations,
+                        "action": "blocked",
+                        "risk_score": guard_in.risk_score,
+                        "timestamp": time.strftime("%H:%M:%S"),
+                    }
+                )
+                violation_summary = "\n".join(f"- {v}" for v in guard_in.violations)
+                return {
+                    "output": (
+                        "🛡️ **Security Policy Enforcement (Guardrails AI)**\n\n"
+                        "Your request was intercepted because it triggered safety policies:\n"
+                        f"{violation_summary}\n\n"
+                        "Please adjust your request to comply with system security directives."
+                    ),
+                    "steps": tracer.steps,
+                    "figures": [],
+                    "annotated_images": [],
+                    "guardrails": {
+                        "input": guard_in.to_dict(),
+                        "output": None,
+                    },
+                }
+
+            if guard_in.action_taken == "sanitized":
+                tracer.steps.append(
+                    {
+                        "type": "guardrails_intercept",
+                        "stage": "input",
+                        "violations": guard_in.violations,
+                        "action": "sanitized",
+                        "risk_score": guard_in.risk_score,
+                        "timestamp": time.strftime("%H:%M:%S"),
+                    }
+                )
+                user_input = guard_in.sanitized_text
+            else:
+                tracer.steps.append(
+                    {
+                        "type": "guardrails_verified",
+                        "stage": "input",
+                        "risk_score": guard_in.risk_score,
+                        "latency_ms": guard_in.latency_ms,
+                        "timestamp": time.strftime("%H:%M:%S"),
+                    }
+                )
+
+        execution_error = False
         try:
             # Case 1: LangGraph / Deep Agents Compiled Graph
             if hasattr(self.agent_graph, "invoke") and not isinstance(self.agent_graph, AgentExecutor):
@@ -387,9 +450,38 @@ class JarvisOrchestrator:
                 output_text = "I processed your request, but generated an empty response."
 
         except Exception as e:
+            execution_error = True
             logger.error(f"Agent Execution Error: {str(e)}", exc_info=True)
             output_text = f"An error occurred during agent processing: {str(e)}"
             tracer.steps.append({"type": "error", "error": str(e), "timestamp": time.strftime("%H:%M:%S")})
+
+        # -----------------------------------------------------------------
+        # Stage 2: Output Guardrail Evaluation (Secret Redaction & Integrity)
+        # -----------------------------------------------------------------
+        if self.enable_guardrails and output_text and not execution_error:
+            guard_out = self.guardrails.validate_output(output_text)
+            if guard_out.violations:
+                tracer.steps.append(
+                    {
+                        "type": "guardrails_intercept",
+                        "stage": "output",
+                        "violations": guard_out.violations,
+                        "action": guard_out.action_taken,
+                        "risk_score": guard_out.risk_score,
+                        "timestamp": time.strftime("%H:%M:%S"),
+                    }
+                )
+                output_text = guard_out.sanitized_text
+            else:
+                tracer.steps.append(
+                    {
+                        "type": "guardrails_verified",
+                        "stage": "output",
+                        "risk_score": guard_out.risk_score,
+                        "latency_ms": guard_out.latency_ms,
+                        "timestamp": time.strftime("%H:%M:%S"),
+                    }
+                )
 
         # Collect any generated plots and annotated images
         figures = get_and_clear_figure_buffer()
@@ -400,4 +492,8 @@ class JarvisOrchestrator:
             "steps": tracer.steps,
             "figures": figures,
             "annotated_images": annotated_imgs,
+            "guardrails": {
+                "input": guard_in.to_dict() if guard_in else None,
+                "output": guard_out.to_dict() if guard_out else None,
+            },
         }

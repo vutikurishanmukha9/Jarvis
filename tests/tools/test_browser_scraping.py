@@ -3,7 +3,7 @@ Unit tests validating Browser Capability 4: Scraping.
 Tests page content extraction, noise script/style filtering, and markdown table synthesis.
 """
 
-from src.tools.browser_tools import (
+from src.tools.browser import (
     browser_extract_table,
     browser_scrape_page,
     get_browser_session,

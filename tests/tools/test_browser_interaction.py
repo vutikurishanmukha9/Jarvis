@@ -3,7 +3,7 @@ Unit tests validating Browser Capability 5: Browser Interaction.
 Tests viewport scrolling, screenshot telemetry capture, and tool collection registration.
 """
 
-from src.tools.browser_tools import (
+from src.tools.browser import (
     browser_capture_screenshot,
     browser_scroll,
     get_browser_session,

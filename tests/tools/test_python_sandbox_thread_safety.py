@@ -2,7 +2,7 @@
 Unit tests for Python executor thread safety and execution sandbox.
 """
 
-from src.tools.python_executor import (
+from src.tools.pyexec import (
     get_and_clear_figure_buffer,
     python_interpreter,
 )

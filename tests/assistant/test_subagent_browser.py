@@ -5,7 +5,7 @@ Unit tests validating the autonomous Web Navigation specialist sub-agent (`brows
 from unittest.mock import MagicMock, patch
 
 from src.core.orchestrator import JarvisOrchestrator
-from src.tools.browser_tools import get_browser_tools
+from src.tools.browser import get_browser_tools
 
 
 def test_browser_specialist_subagent_registered() -> None:

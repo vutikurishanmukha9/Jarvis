@@ -10,12 +10,14 @@ extend-exclude = [
     "venv312",
     "workspace",
     "src/modules/career/data",
-    "deepagents",
-    "browser-use",
-    "docling",
-    "langextract",
-    "MinerU",
-    "PaddleOCR",
+    "subagents",
+    "webbrowse",
+    "docparser",
+    "extractor",
+    "workflow",
+    "sciparse",
+    "visionocr",
+    "safeguard",
 ]
 
 
@@ -43,13 +45,14 @@ ignore = [
 testpaths = ["tests"]
 pythonpath = [
     ".",
-    "deepagents/libs/deepagents",
-    "browser-use",
-    "docling",
-    "langextract",
-    "MinerU",
-    "PaddleOCR",
-    "PaddleOCR/langchain-paddleocr",
+    "subagents/libs/deepagents",
+    "webbrowse",
+    "docparser",
+    "extractor",
+    "sciparse",
+    "visionocr",
+    "visionocr/langchain-paddleocr",
+    "safeguard",
 ]
 
 addopts = [

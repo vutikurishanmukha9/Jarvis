@@ -5,7 +5,7 @@ Unit tests for Document Ingestion & RAG Sub-Agent tool.
 import io
 from unittest.mock import MagicMock, patch
 
-from src.tools.document_tools import (
+from src.tools.doc_rag import (
     create_document_retriever_tool,
     extract_text_from_file,
     get_files_hash,
@@ -62,7 +62,7 @@ def test_process_documents_and_build_vector_store() -> None:
     """Test vector store creation and retriever tool packaging."""
     mock_file = MockUploadedFile("guide.txt", b"Quantum computing uses qubits instead of bits.")
 
-    with patch("src.tools.document_tools.FAISS") as mock_faiss, patch("src.tools.document_tools.HuggingFaceEmbeddings"):
+    with patch("src.tools.doc_rag.FAISS") as mock_faiss, patch("src.tools.doc_rag.HuggingFaceEmbeddings"):
         mock_vectorstore = MagicMock()
         mock_faiss.from_texts.return_value = mock_vectorstore
 

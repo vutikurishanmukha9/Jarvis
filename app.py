@@ -48,7 +48,7 @@ from src.core.session_manager import SessionManager
 from src.modules.career import calculate_deep_ats_metrics, get_resume_skills_categorized, get_salary_and_role_estimate
 from src.modules.outreach import CampaignManager, EmailDispatcher
 from src.modules.vision import clear_active_images, register_uploaded_image
-from src.tools.document_tools import (
+from src.tools.doc_rag import (
     create_document_retriever_tool,
     get_files_hash,
     process_documents_and_build_vector_store,
@@ -119,6 +119,12 @@ with st.sidebar:
         "Deep Research & Autonomous Reasoning",
         value=False,
         help="Enables multi-step planning, iterative search, and structured intelligence synthesis.",
+    )
+
+    enable_guardrails = st.toggle(
+        "🛡️ Guardrails AI Defense Engine",
+        value=True,
+        help="Enables dual-stage input prompt-injection filtering, PII redaction, and output secret suppression.",
     )
 
     # Model Configuration
@@ -260,6 +266,7 @@ try:
         persona=persona_choice,
         deep_research_mode=deep_research,
         document_tool=document_tool,
+        enable_guardrails=enable_guardrails,
     )
 except Exception as e:
     st.error(f"Failed to initialize Jarvis Orchestrator: {str(e)}")
@@ -376,6 +383,12 @@ with tab_chat:
                                 st.caption(step.get("output", ""))
                             elif st_type in ["tool_error", "error"]:
                                 st.markdown(f"**[{t_time}] Error:** {step.get('error')}")
+                            elif st_type == "guardrails_intercept":
+                                st.warning(f"**[{t_time}] 🛡️ Guardrails Intercept ({step.get('stage', '').upper()}):** {step.get('action', '').upper()} | Risk: {step.get('risk_score')}")
+                                for viol in step.get("violations", []):
+                                    st.caption(f"- {viol}")
+                            elif st_type == "guardrails_verified":
+                                st.caption(f"🛡️ Guardrails Verified ({step.get('stage', '').upper()}): Clean ({step.get('latency_ms', 0):.1f}ms)")
 
                 # Render Figures
                 figures = result.get("figures", [])
