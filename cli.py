@@ -104,7 +104,7 @@ def chat(persona: str, model: Optional[str], no_guardrails: bool):
     from src.core.orchestrator import JarvisOrchestrator
 
     system_instructions = PERSONAS.get(persona, PERSONAS.get("Executive Assistant", ""))
-    model_name = model or os.getenv("JARVIS_MODEL", "openai/gpt-4o")
+    model_name: str = model or os.getenv("JARVIS_MODEL") or "openai/gpt-4o"
 
     print_banner(persona=persona, model=model_name)
 

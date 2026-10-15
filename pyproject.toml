@@ -108,7 +108,10 @@ ignore_errors = true
 
 [[tool.mypy.overrides]]
 module = [
+    "cli",
     "app",
+    "rich.*",
+    "click.*",
     "src.core.orchestrator",
     "src.modules.career.career_bridge",
     "src.modules.career.scorer.routes.*",
