@@ -318,6 +318,40 @@ JARVIS_MODEL=deepseek/deepseek-chat
 ```
 
 ### 4. Launch J.A.R.V.I.S.
+
+You can run J.A.R.V.I.S. either via the high-performance **Terminal CLI** or the visual **Streamlit Web Dashboard**:
+
+#### Option A: Production-Grade Terminal CLI
+```bash
+# Launch interactive conversational intelligence REPL (Default)
+python cli.py
+
+# Launch with custom persona or model override
+python cli.py chat --persona "Research Scientist" --model deepseek/deepseek-chat
+
+# Decompose and execute an autonomous goal via Kahn's Topological DAG
+python cli.py goal "Analyze Q3 financial trends and synthesize executive report"
+
+# Execute 5-Pillar ATS compatibility audit on candidate resume
+python cli.py ats workspace/resume.docx workspace/job_desc.txt
+
+# Ingest and query complex documents via Docling / MinerU Vector RAG
+python cli.py doc research_paper.pdf --query "What is the primary contribution?"
+
+# Run YOLOv8 object detection and SOTA scene text OCR
+python cli.py vision inspection_sample.png
+
+# Extract live web content via the 3-Tier Web Intelligence Matrix
+python cli.py web https://news.ycombinator.com --tier scrapling
+
+# Transcribe and dispatch a voice directive
+python cli.py voice audio_memo.wav
+
+# Inspect and manage deliverables in the sandboxed workspace
+python cli.py workspace
+```
+
+#### Option B: Streamlit Web Dashboard
 ```bash
 streamlit run app.py
 ```
