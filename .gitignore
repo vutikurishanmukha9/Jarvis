@@ -69,13 +69,8 @@ workspace/*
 Thumbs.db
 desktop.ini
 
-# Cloned Framework Repositories (Standardized <= 9 chars)
-HI_HR/
-voicelab/
+# Vendored & Cloned Framework Repositories (Standardized <= 9 chars)
 scrapling/
-firecrawl/
 webcrawl/
-brave/
-permsite/
-chromium/
+
 
