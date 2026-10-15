@@ -48,6 +48,7 @@ from src.core.session_manager import SessionManager
 from src.modules.career import calculate_deep_ats_metrics, get_resume_skills_categorized, get_salary_and_role_estimate
 from src.modules.outreach import CampaignManager, EmailDispatcher
 from src.modules.vision import clear_active_images, register_uploaded_image
+from src.modules.voice import transcribe_voice_directive
 from src.tools.doc_rag import (
     create_document_retriever_tool,
     get_files_hash,
@@ -80,6 +81,12 @@ if "mission_plan" not in st.session_state:
     st.session_state.mission_plan = None
 if "mission_history" not in st.session_state:
     st.session_state.mission_history = []
+if "active_goal_directive" not in st.session_state:
+    st.session_state.active_goal_directive = ""
+if "last_transcribed_audio_hash" not in st.session_state:
+    st.session_state.last_transcribed_audio_hash = None
+if "last_chat_audio_hash" not in st.session_state:
+    st.session_state.last_chat_audio_hash = None
 
 # 4. Sidebar Controls
 with st.sidebar:
@@ -346,6 +353,26 @@ with tab_chat:
                 for name, ann_img in annotated_imgs:
                     st.image(ann_img, caption=f"YOLOv8 Object Detection: {name}", use_column_width=True)
 
+    # Voice Chat Input Expander
+    with st.expander("🎙️ Speak Voice Directive to Chat", expanded=False):
+        voice_chat_audio = st.audio_input("Record voice message for JARVIS:", key="chat_voice_input")
+        if voice_chat_audio is not None:
+            chat_audio_bytes = voice_chat_audio.getvalue()
+            chat_audio_hash = hash(chat_audio_bytes)
+            if st.session_state.get("last_chat_audio_hash") != chat_audio_hash:
+                with st.spinner("🎙️ Transcribing voice message..."):
+                    chat_res = transcribe_voice_directive(
+                        chat_audio_bytes,
+                        api_key=api_key,
+                        base_url=base_url,
+                    )
+                    if chat_res.get("success"):
+                        st.session_state.last_chat_audio_hash = chat_audio_hash
+                        quick_prompt = chat_res.get("text", "")
+                        st.toast(f"🎙️ Voice Prompt: \"{quick_prompt}\"", icon="🎙️")
+                    else:
+                        st.error(f"Voice transcription failed: {chat_res.get('error')}")
+
     # Chat Input & Execution
     user_query = st.chat_input("Instruct JARVIS (math, documents, vision, web research, workspace files)...")
     if quick_prompt:
@@ -441,20 +468,67 @@ with tab_mission:
         if st.button("Recruiter Outreach Campaign", use_container_width=True):
             preset_goal = "Draft a personalized recruiter outreach email with a 4-stage follow-up cadence for the target company and role, render previews with dynamic tags, and save the campaign briefing in the workspace."
 
+    # Preset Goal Trigger
+    if preset_goal:
+        st.session_state.active_goal_directive = preset_goal
+
+    # Voice Directive Input (VoiceStudio ASR Bridge)
+    col_v1, col_v2 = st.columns([3, 1])
+    with col_v1:
+        voice_audio = st.audio_input(
+            "🎙️ Speak Your Directive to JARVIS",
+            key="mission_voice_input",
+            help="Record a voice command using your microphone. J.A.R.V.I.S. transcribes it in real-time using offline faster-whisper.",
+        )
+    with col_v2:
+        st.markdown("<div style='height: 28px;'></div>", unsafe_allow_html=True)
+        auto_launch_voice = st.checkbox(
+            "Auto-Launch on Voice",
+            value=False,
+            help="Automatically decompose and execute the goal immediately after voice transcription.",
+        )
+
+    voice_triggered_mission = False
+    if voice_audio is not None:
+        audio_bytes = voice_audio.getvalue()
+        audio_hash = hash(audio_bytes)
+        if st.session_state.get("last_transcribed_audio_hash") != audio_hash:
+            with st.spinner("🎙️ Transcribing voice directive with faster-whisper..."):
+                transcribe_res = transcribe_voice_directive(
+                    audio_bytes,
+                    api_key=api_key,
+                    base_url=base_url,
+                )
+                if transcribe_res.get("success"):
+                    transcribed_cmd = transcribe_res.get("text", "")
+                    st.session_state.active_goal_directive = transcribed_cmd
+                    st.session_state.last_transcribed_audio_hash = audio_hash
+                    st.toast(f"🎙️ Transcribed: \"{transcribed_cmd}\"", icon="🎙️")
+                    if auto_launch_voice:
+                        voice_triggered_mission = True
+                else:
+                    st.error(f"Voice transcription error: {transcribe_res.get('error')}")
+
     # Mission Input Box
     goal_input = st.text_area(
         "Goal / Mission Directive for JARVIS:",
-        value=preset_goal if preset_goal else "",
-        placeholder="e.g. Research solid-state battery breakthroughs, build a comparison table in Excel, write a formal summary in Markdown, and generate a Python projection chart...",
+        value=st.session_state.active_goal_directive,
+        placeholder="Speak via the microphone above or type your mission directive...",
         height=100,
+        key="mission_goal_textarea",
     )
+    if goal_input != st.session_state.active_goal_directive:
+        st.session_state.active_goal_directive = goal_input
 
     col_btn1, col_btn2 = st.columns([1, 4])
     with col_btn1:
         start_mission = st.button("Launch Autonomous Mission", type="primary", use_container_width=True)
+        if voice_triggered_mission:
+            start_mission = True
     with col_btn2:
         if st.button("Reset Mission State", use_container_width=False):
             st.session_state.mission_plan = None
+            st.session_state.active_goal_directive = ""
             st.rerun()
 
     # Mission Execution Workflow

@@ -310,3 +310,41 @@ def python_interpreter(code: str) -> str:
         finally:
             sys.stdout = old_stdout
             sys.stderr = old_stderr
+
+
+@tool
+def sandboxed_python_runner(code: str) -> str:
+    """
+    Executes Python scripts in an OS-level isolated subprocess sandboxed by a Windows Job Object.
+    Enforces a strict 256MB memory cap, 30s timeout, and process-tree termination on exit,
+    protecting the system against memory exhaustion, runaway threads, and resource abuse.
+
+    Args:
+        code: Python source code string to execute.
+    """
+    from ..core.job_sandbox import run_sandboxed_python_code
+
+    clean_code = code.strip()
+    if clean_code.startswith("```python"):
+        clean_code = clean_code[9:]
+    elif clean_code.startswith("```"):
+        clean_code = clean_code[3:]
+    if clean_code.endswith("```"):
+        clean_code = clean_code[:-3]
+    clean_code = clean_code.strip()
+
+    exit_code, stdout, stderr = run_sandboxed_python_code(
+        clean_code,
+        memory_limit_mb=256,
+        timeout_seconds=EXECUTION_TIMEOUT_SECONDS,
+    )
+
+    parts = [f"Sandboxed Execution (Exit Code {exit_code}):"]
+    if stdout.strip():
+        parts.append(f"[Output]:\n{stdout.strip()}")
+    if stderr.strip():
+        parts.append(f"[Stderr/Errors]:\n{stderr.strip()}")
+    if not stdout.strip() and not stderr.strip():
+        parts.append("[Success: Script executed without output]")
+    return "\n\n".join(parts)
+

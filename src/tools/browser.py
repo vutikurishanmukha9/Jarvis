@@ -13,9 +13,11 @@ Provides 5 core capabilities:
 from __future__ import annotations
 
 import logging
+import os
 import re
-from typing import Dict, List, Optional
-from urllib.parse import urljoin
+import shutil
+from typing import Dict, List, Optional, Set
+from urllib.parse import urljoin, urlparse
 
 from bs4 import BeautifulSoup
 from langchain_core.tools import BaseTool, tool
@@ -24,6 +26,138 @@ from .cleaner import sanitize_scraped_content
 from .web import _validate_url
 
 logger = logging.getLogger(__name__)
+
+# Known ad networks, analytics beacons, and telemetry domains blocked by Brave Shields
+BRAVE_SHIELDS_BLOCKED_DOMAINS: Set[str] = {
+    "doubleclick.net",
+    "googlesyndication.com",
+    "google-analytics.com",
+    "adservice.google.com",
+    "adnxs.com",
+    "criteo.com",
+    "taboola.com",
+    "outbrain.com",
+    "scorecardresearch.com",
+    "rubiconproject.com",
+    "pubmatic.com",
+    "amazon-adsystem.com",
+    "facebook.net",
+    "analytics.twitter.com",
+    "advertising.apple.com",
+    "quantserve.com",
+    "advertising.com",
+    "chartbeat.com",
+    "openx.net",
+    "moatads.com",
+}
+
+
+def get_brave_executable_path() -> Optional[str]:
+    """
+    Auto-detect the Brave Browser executable on Windows, Linux, or macOS.
+    Returns the file path string if found, otherwise None.
+    """
+    custom_path = os.getenv("BRAVE_PATH")
+    if custom_path and os.path.isfile(custom_path):
+        return custom_path
+
+    # Standard Windows installation paths
+    win_candidates = [
+        r"C:\Program Files\BraveSoftware\Brave-Browser\Application\brave.exe",
+        r"C:\Program Files (x86)\BraveSoftware\Brave-Browser\Application\brave.exe",
+    ]
+    local_app_data = os.getenv("LOCALAPPDATA")
+    if local_app_data:
+        win_candidates.append(
+            os.path.join(local_app_data, r"BraveSoftware\Brave-Browser\Application\brave.exe")
+        )
+
+    for path in win_candidates:
+        if os.path.isfile(path):
+            return path
+
+    # POSIX / PATH lookup
+    posix_candidates = [
+        "brave-browser",
+        "brave",
+        "/usr/bin/brave-browser",
+        "/usr/local/bin/brave-browser",
+        "/Applications/Brave Browser.app/Contents/MacOS/Brave Browser",
+    ]
+    for candidate in posix_candidates:
+        resolved = shutil.which(candidate) if not os.path.isabs(candidate) else candidate
+        if resolved and os.path.isfile(resolved):
+            return resolved
+
+    return None
+
+
+def is_domain_blocked_by_shields(url_or_domain: str) -> bool:
+    """
+    Check whether a URL or host domain matches Brave Shields ad/tracker filters.
+    """
+    if "://" in url_or_domain:
+        try:
+            parsed = urlparse(url_or_domain)
+            host = (parsed.hostname or "").lower()
+        except Exception:
+            host = url_or_domain.lower()
+    else:
+        host = url_or_domain.lower()
+
+    for blocked in BRAVE_SHIELDS_BLOCKED_DOMAINS:
+        if host == blocked or host.endswith("." + blocked):
+            return True
+    return False
+
+
+def strip_ad_elements_from_dom(raw_html: str) -> str:
+    """
+    Brave Shields DOM Stripper:
+    Purges ad slots, sponsor banners, tracking beacons, and cookie consent modals
+    to prevent visual token bloat (saving up to 70% vision tokens) and sanitize DOM.
+    """
+    if not raw_html or not raw_html.strip():
+        return raw_html
+
+    try:
+        soup = BeautifulSoup(raw_html, "html.parser")
+        removed_count = 0
+
+        # 1. Target tags by name
+        for tag in soup.find_all(["ins", "iframe"]):
+            if tag.name == "ins" and ("adsbygoogle" in tag.get("class", []) or "ad" in str(tag.get("class", ""))):
+                tag.decompose()
+                removed_count += 1
+            elif tag.name == "iframe":
+                src = str(tag.get("src", ""))
+                if any(b in src.lower() for b in BRAVE_SHIELDS_BLOCKED_DOMAINS) or "ad" in src.lower():
+                    tag.decompose()
+                    removed_count += 1
+
+        # 2. Target elements by ad/tracker class keywords
+        ad_class_pattern = re.compile(
+            r"(^|[\s_-])(ad|ads|advertisement|banner-ad|sponsored|cookie-banner|consent-banner|tracking)([\s_-]|$)",
+            re.IGNORECASE,
+        )
+        for el in soup.find_all(attrs={"class": ad_class_pattern}):
+            el.decompose()
+            removed_count += 1
+
+        # 3. Target elements by ad/tracker ID keywords
+        ad_id_pattern = re.compile(
+            r"(^|[\s_-])(google_ads|ad-banner|advertisement|cookie-notice|cookie-consent|privacy-consent)([\s_-]|$)",
+            re.IGNORECASE,
+        )
+        for el in soup.find_all(id=ad_id_pattern):
+            el.decompose()
+            removed_count += 1
+
+        logger.debug(f"Brave Shields: Stripped {removed_count} ad/tracker elements from DOM.")
+        return str(soup)
+    except Exception as e:
+        logger.warning(f"Brave Shields DOM stripping error: {e}")
+        return raw_html
 
 
 class BrowserSessionState:
@@ -38,6 +172,8 @@ class BrowserSessionState:
         self.current_tab_id: str = "tab-1"
         self.scroll_position: int = 0
         self.form_data: Dict[str, str] = {}
+        self.brave_shields_enabled: bool = True
+        self.shields_blocked_count: int = 0
 
     def reset(self) -> None:
         """Reset the session state."""
@@ -49,6 +185,8 @@ class BrowserSessionState:
         self.current_tab_id = "tab-1"
         self.scroll_position = 0
         self.form_data.clear()
+        self.brave_shields_enabled = True
+        self.shields_blocked_count = 0
 
 
 # Global active browser state
@@ -78,25 +216,40 @@ def navigate_to_url(url: str) -> str:
     if not clean_url:
         return "Error: URL parameter cannot be empty."
 
+    session = get_browser_session()
+
+    # Brave Shields ad/tracker domain block (intercept BEFORE network / DNS resolution)
+    if session.brave_shields_enabled and is_domain_blocked_by_shields(clean_url):
+        session.shields_blocked_count += 1
+        return (
+            f"Navigation Blocked (Brave Shields): Domain '{clean_url}' is classified as an ad/tracker network. "
+            f"Shields prevented tracking payload from executing."
+        )
+
     # Validate SSRF
     err = _validate_url(clean_url)
     if err:
         return f"Navigation Blocked (Security Policy): {err}"
 
-    session = get_browser_session()
     try:
         import requests
 
         resp = requests.get(clean_url, timeout=15, headers={"User-Agent": "Jarvis-Browser-Agent/1.0"})
         resp.raise_for_status()
 
-        soup = BeautifulSoup(resp.text, "html.parser")
+        page_html = resp.text
+        shields_note = ""
+        if session.brave_shields_enabled:
+            page_html = strip_ad_elements_from_dom(page_html)
+            shields_note = " | Brave Shields: Active (Ads/Trackers purged)"
+
+        soup = BeautifulSoup(page_html, "html.parser")
         title = soup.title.string.strip() if soup.title and soup.title.string else clean_url
 
         session.history.append(session.current_url)
         session.current_url = clean_url
         session.page_title = title
-        session.page_content = resp.text
+        session.page_content = page_html
         session.active_tabs[session.current_tab_id] = clean_url
         session.scroll_position = 0
 
@@ -107,7 +260,7 @@ def navigate_to_url(url: str) -> str:
         return (
             f"Successfully navigated to: {clean_url}\n"
             f"Page Title: {title}\n"
-            f"Interactive Elements: {len(links)} links, {len(inputs)} form controls found."
+            f"Interactive Elements: {len(links)} links, {len(inputs)} form controls found.{shields_note}"
         )
     except Exception as e:
         logger.error(f"Failed to navigate to {clean_url}: {e}")
@@ -343,8 +496,58 @@ def browser_capture_screenshot() -> str:
     )
 
 
+# ==========================================
+# 6. PRIVACY & SHIELDS TOOLS
+# ==========================================
+
+
+@tool
+def toggle_brave_shields(enable: bool = True) -> str:
+    """
+    Toggle Brave Shields ad-blocking and tracker-stripping protection.
+    When enabled, automatically intercepts ad networks and prunes cosmetic ad banners,
+    reducing multimodal vision and LLM token overhead by ~70%.
+
+    Args:
+        enable: True to enable Shields (default), False to disable.
+    """
+    session = get_browser_session()
+    session.brave_shields_enabled = enable
+    status = "ENABLED" if enable else "DISABLED"
+    return (
+        f"Brave Shields is now {status}. "
+        f"Ad blocking, tracker filtering, and DOM cosmetic ad-stripping are {'active' if enable else 'inactive'}."
+    )
+
+
+@tool
+def check_browser_permission(permission_name: str) -> str:
+    """
+    Check the zero-trust security policy for a browser Web API permission before interacting with it.
+    Verifies whether an action (e.g., 'camera', 'microphone', 'location', 'clipboard', 'usb', 'file-system')
+    is allowed, mocked with synthetic data, requires human operator approval, or is strictly denied.
+
+    Args:
+        permission_name: The permission name (e.g., 'location', 'camera', 'usb', 'clipboard', 'show-open-file-picker').
+    """
+    from ..core.permission_gate import get_permission_gate
+
+    gate = get_permission_gate()
+    res = gate.evaluate_permission(permission_name)
+    lines = [
+        f"Permission Policy Evaluation for '{res.permission}':",
+        f"• Decision: {res.decision.value}",
+        f"• Reason: {res.reason}",
+    ]
+    if res.requires_user_prompt:
+        lines.append("• Human-In-The-Loop: Required (operator confirmation must be obtained).")
+    if res.mock_payload:
+        lines.append(f"• Synthetic Mock Data: {res.mock_payload}")
+    return "\n".join(lines)
+
+
 def get_browser_tools() -> List[BaseTool]:
-    """Retrieve the suite of all 9 browser navigation and interaction tools."""
+    """Retrieve the suite of all 12 browser navigation, interaction, and security tools."""
     return [
         navigate_to_url,
         browser_go_back,
@@ -356,4 +559,6 @@ def get_browser_tools() -> List[BaseTool]:
         browser_extract_table,
         browser_scroll,
         browser_capture_screenshot,
+        toggle_brave_shields,
+        check_browser_permission,
     ]

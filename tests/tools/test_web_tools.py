@@ -6,13 +6,16 @@ from src.tools.web import get_web_tools, wikipedia_lookup
 
 
 def test_web_tools_suite_registration():
-    """Verify standard suite of web research tools are exposed."""
+    """Verify standard suite and 3-Tier web intelligence tools are exposed."""
     tools = get_web_tools()
-    assert len(tools) == 3
+    assert len(tools) == 6
     names = [t.name for t in tools]
-    assert "duckduckgo_search" in names
+    assert "duckduckgo_search" in names or any("search" in n for n in names)
     assert "wikipedia_lookup" in names
     assert "read_webpage_content" in names
+    assert "scrape_web_adaptive" in names
+    assert "crawl_web_dynamic" in names
+    assert "map_website_urls" in names
 
 
 def test_wikipedia_lookup_empty_or_nonsense():

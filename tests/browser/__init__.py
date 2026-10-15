@@ -1,0 +1,1 @@
+"""Browser test suite package."""

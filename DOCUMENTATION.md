@@ -239,6 +239,14 @@ The following table provides the exhaustive file inventory across the entire rep
 | `sciparse/` | Vendored Engine | Deep scientific document parsing, layout analysis, and LaTeX formula recognition (formerly `MinerU`) |
 | `visionocr/` | Vendored Engine | High-precision scene text and document OCR with DBNet++ and SVTR recognition (formerly `PaddleOCR`) |
 | `safeguard/` | Vendored Engine | Enterprise Guardrails AI framework for dual-stage prompt injection, PII redaction, and secret defense (formerly `guardrails`) |
+| `voicelab/` | Vendored Engine | Open-source voice cloning, voice design, ASR sidecar, and OmniVoice diffusion TTS (formerly `VoiceStudio`) |
+| `scrapling/` | Vendored Engine | Adaptive web scraping with automatic DOM element relocation and Turnstile bypass |
+| `firecrawl/` | Vendored Engine | Web-to-LLM crawler with rapid `/map` domain sitemap discovery and batch multi-page extraction |
+| `webcrawl/` | Vendored Engine | Async JS-hydrated crawler and fit-markdown generator (formerly `crawl4ai`) |
+| `brave/` | Vendored Engine | Privacy-first browser with Brave Shields ad/tracker blocking (formerly `brave-browser`) |
+| `permsite/` | Testing Suite | Web API permission prompt harness for testing browser permissions (formerly `permission.site`) |
+| `chromium/` | Core Engine | Chromium architecture, Windows AppContainer, and Job Object OS sandboxing (formerly `chromium-main`) |
+| `src/modules/voice/` | Voice Intelligence | Local faster-whisper INT8 ASR and voice directive command pipeline |
 | `.github/workflows/ci.yml` | CI/CD Pipeline | Parallel linting, type-checking, testing, and smoke verification |
 | `.github/workflows/security.yml` | Security Pipeline | Static application security testing (Bandit) and dependency audit |
 | `tests/` | Quality Assurance | Full test suite verifying all system components and subagents |
@@ -630,6 +638,41 @@ Section multipliers weight skills discovered in `Experience` ($1.5\times$) and `
 - **Purpose**: Enterprise Guardrails AI validation framework providing programmable input/output safety specifications, PII redaction, secret leakage suppression, and structured schema verification.
 - **Integration**: Wrapped by `src/core/guardrails_bridge.py` and deeply integrated into `JarvisOrchestrator` execution loops and Streamlit UI telemetry.
 
+### 11.9. `voicelab/` (formerly `VoiceStudio/`)
+- **Location**: `voicelab/`
+- **Purpose**: Real-time voice intelligence, CTranslate2 INT8 speech-to-text (`faster-whisper`), and offline audio transcription.
+- **Integration**: Wrapped by `src/modules/voice/voice_bridge.py` and integrated into `app.py` for hands-free voice directive ingestion in Autonomous Mission Control and Intelligence Chat.
+
+### 11.10. `scrapling/` (formerly `Scrapling/`)
+- **Location**: `scrapling/`
+- **Purpose**: Resilient web scraping engine that survives DOM redesigns via adaptive hierarchical selectors and stealth fetchers.
+- **Integration**: Wrapped by `src/tools/web.py` via `scrape_web_adaptive` tool.
+
+### 11.11. `firecrawl/` (formerly `firecrawl/`)
+- **Location**: `firecrawl/`
+- **Purpose**: Rapid domain sitemap discovery (`/map`), deep link extraction, and web-to-LLM batch extraction.
+- **Integration**: Wrapped by `src/tools/web.py` via `map_website_urls` tool with native link extractor fallback.
+
+### 11.12. `webcrawl/` (formerly `crawl4ai/`)
+- **Location**: `webcrawl/`
+- **Purpose**: Local async JavaScript-hydrated crawling and LLM fit-markdown extraction.
+- **Integration**: Wrapped by `src/tools/web.py` via `crawl_web_dynamic` tool.
+
+### 11.13. `brave/` (formerly `brave-browser/`)
+- **Location**: `brave/`
+- **Purpose**: Brave Shields ad-blocking, tracker filtering, anti-fingerprinting, and visual token bloat suppression (~70% token savings).
+- **Integration**: Wrapped by `src/tools/browser.py` via `strip_ad_elements_from_dom`, `is_domain_blocked_by_shields`, `get_brave_executable_path`, and `toggle_brave_shields` tool.
+
+### 11.14. `permsite/` (formerly `permission.site/`)
+- **Location**: `permsite/`
+- **Purpose**: Web API permission prompt harness evaluating 25+ browser permission dialogs (Camera, Microphone, Geolocation, USB, Serial, File System Access).
+- **Integration**: Wrapped by `src/core/permission_gate.py` (BrowserPermissionGate) and exposed via `check_browser_permission` tool in `src/tools/browser.py`.
+
+### 11.15. `chromium/` (formerly `chromium-main/`)
+- **Location**: `chromium/`
+- **Purpose**: Operating system sandboxing primitives, Windows Job Objects (`JOBOBJECT_EXTENDED_LIMIT_INFORMATION`), and hard memory caps.
+- **Integration**: Wrapped by `src/core/job_sandbox.py` (`WindowsJobSandbox`) and exposed via `sandboxed_python_runner` tool in `src/tools/pyexec.py`.
+
 ---
 
 ## 12. CI/CD and Security Pipelines (`.github/workflows/`)
@@ -694,10 +737,12 @@ The test suite contains exhaustive unit and integration tests across all subsyst
 - `test_python_executor.py`: Tests Python REPL execution, stdout capture, and timeouts.
 - `test_python_security.py`: Tests blocking dangerous module imports.
 - `test_python_sandbox_thread_safety.py`: Tests thread isolation and Matplotlib figure capture.
+- `test_python_sandbox_job.py`: Tests Windows Job Object kernel sandbox, 256MB memory cap, 30s timeout, and `sandboxed_python_runner` tool.
 - `test_workspace_path_hardening.py`: Tests blocking drive letters, UNC paths, and null bytes.
 - `test_web_security_ssrf.py`: Tests blocking private IP ranges and cloud metadata endpoints.
 - `test_web_tools.py`: Tests website scraping and Wikipedia retrieval.
 - `test_web_search_resilience.py`: Tests search failure recovery and query sanitization.
+- `test_brave_shields.py`: Tests Brave executable auto-detection, Brave Shields domain filtering, DOM ad-stripping, and `toggle_brave_shields` tool.
 - `test_browser_navigation.py`: Tests browser URL loading, scheme checks, and history navigation.
 - `test_browser_clicking.py`: Tests CSS selector and anchor text click interactions.
 - `test_browser_forms.py`: Tests input field population and form submission.
@@ -709,8 +754,12 @@ The test suite contains exhaustive unit and integration tests across all subsyst
 - `test_extraction_tools_langextract.py`: Tests LangExtract grounded extraction, character span mapping, and visualizer generation.
 - `test_document_hash_caching.py`: Tests composite SHA-256 hash caching.
 - `test_document_hash_rag.py`: Tests vector search and chunk retrieval accuracy.
+- `test_web_matrix.py`: Tests 3-Tier Web Intelligence Matrix (Scrapling adaptive scraper, Crawl4AI dynamic crawler, Firecrawl URL sitemapper, and SSRF security).
 
-### 13.4. Module Tests (`tests/modules/`)
+### 13.4. Browser Security Tests (`tests/browser/`)
+- `test_permission_site.py`: Tests Browser Permission Policy Gate against 25+ Web API permissions across ALLOW, MOCK, REQUIRE_HUMAN_APPROVAL, and DENY classifications.
+
+### 13.5. Module Tests (`tests/modules/`)
 - `test_ats_scorer.py`: Tests 5-pillar ATS mathematical formula.
 - `test_ats_helpers.py`: Tests section parsing, contact extraction, and formatting rules.
 - `test_skill_extractor.py`: Tests skill matching across 13 domains.
@@ -723,6 +772,7 @@ The test suite contains exhaustive unit and integration tests across all subsyst
 - `test_vision_algorithms.py`: Tests Laplacian blur, K-Means color clustering, and YOLO detection.
 - `test_vision_bridge.py`: Tests vision tools exposed to the orchestrator.
 - `test_vision_paddleocr.py`: Tests PaddleOCR contract, scene text extraction, bounding box localization, multi-tier fallback to Tesseract, and thread safety.
+- `test_voice_bridge.py`: Tests Voice Intelligence Bridge, faster-whisper local INT8 ASR, cloud Whisper API fallback, and stream buffer handling.
 
 ---
 
@@ -742,3 +792,8 @@ The table below documents how J.A.R.V.I.S. mitigates the core threat categories:
 | **SEC-08** | Concurrent State Corruption | Race conditions or file locks on profile/memory writes on Windows | Exponential retry loops with atomic replacement semantics in `ProfileManager` | [`src/assistant/profile_manager.py`](src/assistant/profile_manager.py) |
 | **SEC-09** | MCP & API Path Traversal / Arbitrary LFI | External clients attempting to access arbitrary host files via MCP server or API endpoints | `resolve_absolute_path` enforces sandbox boundaries (`MCP_ALLOWED_DIR`) with null-byte sanitization and `Path.relative_to` verification; `create_result_zip` enforces `output_dir` path confinement | [`visionocr/mcp_server/paddleocr_mcp/inference/shared/input_contract.py`](visionocr/mcp_server/paddleocr_mcp/inference/shared/input_contract.py), [`sciparse/mineru/cli/fast_api.py`](sciparse/mineru/cli/fast_api.py) |
 | **SEC-10** | Direct Prompt Injection, PII & Secret Leakage | Adversarial prompt overrides, PII exposure, and accidental secret key leakage in LLM output | Dual-stage `GuardrailsBridge` evaluates input queries against prompt-injection regexes, auto-redacts PII (SSN, cards), suppresses secrets (OpenAI, AWS, GitHub tokens) in output text, and provides UI controls | [`src/core/guardrails_bridge.py`](src/core/guardrails_bridge.py), [`src/core/orchestrator.py`](src/core/orchestrator.py) |
+| **SEC-11** | Multi-Tier Web Scraping & SSRF Vulnerabilities | Rogue or redirect SSRF attacks during adaptive or dynamic crawling | Strict `_validate_url` checks on every tier (Scrapling, Crawl4AI, Firecrawl) blocking private IP spaces (`127.0.0.0/8`, `10.0.0.0/8`, `192.168.0.0/16`, `169.254.0.0/16`), scheme validation, and max redirect caps | [`src/tools/web.py`](src/tools/web.py) |
+| **SEC-12** | Web Advertising & Visual Token Bloat | Commercial popups, tracking scripts, and banner ads consuming up to 70% of vision tokens and corrupting DOM parsing | Brave Shields ad-blocker domain interceptor (`is_domain_blocked_by_shields`) and DOM cosmetic ad-stripper (`strip_ad_elements_from_dom`) purging ad slots, sponsor banners, tracking beacons, and consent popups prior to LLM/vision ingestion | [`src/tools/browser.py`](src/tools/browser.py) |
+| **SEC-13** | Drive-by Web API & Hardware Privilege Escalation | Untrusted web pages prompting for camera, microphone, USB, serial, or local filesystem access | `BrowserPermissionGate`: Zero-trust permission classification matrix categorizing 25+ browser permissions into ALLOW, MOCK (synthetic GPS), REQUIRE_HUMAN_APPROVAL (AV hardware), and DENY (USB/Serial/FileSystem) | [`src/core/permission_gate.py`](src/core/permission_gate.py), [`src/tools/browser.py`](src/tools/browser.py) |
+| **SEC-14** | Host Memory Exhaustion & Runaway Subprocess Tree | Malicious or runaway Python computations exhausting host RAM or spawning orphan child processes | `WindowsJobSandbox`: OS-level Windows Job Object with hard 256MB memory cap (`JOB_OBJECT_LIMIT_PROCESS_MEMORY`), CPU deadline enforcement, and automatic process-tree kill-on-close (`JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE`) | [`src/core/job_sandbox.py`](src/core/job_sandbox.py), [`src/tools/pyexec.py`](src/tools/pyexec.py) |
+
