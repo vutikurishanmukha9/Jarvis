@@ -21,7 +21,6 @@ from rich.markdown import Markdown
 from rich.panel import Panel
 from rich.prompt import Confirm, Prompt
 from rich.table import Table
-from rich.text import Text
 
 # Configure Windows UTF-8 Terminal Stream
 if sys.platform == "win32":
@@ -72,7 +71,9 @@ def print_banner(persona: str = "Executive Assistant", model: str = "Default"):
     )
 
     console.print(Panel(status_table, title="[bold cyan]System State Telemetry[/bold cyan]", border_style="cyan"))
-    console.print("[dim]Type your prompt, or use slash commands like [bold]/help[/bold], [bold]/goal <desc>[/bold], [bold]/workspace[/bold], [bold]/clear[/bold], [bold]/exit[/bold].[/dim]\n")
+    console.print(
+        "[dim]Type your prompt, or use slash commands like [bold]/help[/bold], [bold]/goal <desc>[/bold], [bold]/workspace[/bold], [bold]/clear[/bold], [bold]/exit[/bold].[/dim]\n"
+    )
 
 
 @click.group(invoke_without_command=True)
@@ -149,7 +150,7 @@ def chat(persona: str, model: Optional[str], no_guardrails: bool):
                         for i, msg in enumerate(chat_history):
                             sender = "User" if isinstance(msg, HumanMessage) else "J.A.R.V.I.S."
                             style = "bold cyan" if sender == "User" else "bold green"
-                            console.print(f"[{style}][Turn {i+1} - {sender}]:[/{style}] {msg.content[:150]}...")
+                            console.print(f"[{style}][Turn {i + 1} - {sender}]:[/{style}] {msg.content[:150]}...")
                         console.print()
                     continue
 
@@ -197,7 +198,9 @@ def chat(persona: str, model: Optional[str], no_guardrails: bool):
                         if not matches:
                             console.print(f"[dim]No matching conversation memories found for '{arg}'.[/dim]\n")
                         else:
-                            search_table = Table(title=f"Memory Search Results for '{arg}'", show_header=True, header_style="bold yellow")
+                            search_table = Table(
+                                title=f"Memory Search Results for '{arg}'", show_header=True, header_style="bold yellow"
+                            )
                             search_table.add_column("Session", style="cyan", width=22)
                             search_table.add_column("Role", style="magenta", width=8)
                             search_table.add_column("Matching Snippet", style="white")
@@ -213,15 +216,26 @@ def chat(persona: str, model: Optional[str], no_guardrails: bool):
                     learner = get_skill_learner()
                     skills = learner.get_registered_skills()
                     if not skills:
-                        console.print("[dim]No procedural skills learned yet. Run '/goal <mission>' to synthesize skills automatically.[/dim]\n")
+                        console.print(
+                            "[dim]No procedural skills learned yet. Run '/goal <mission>' to synthesize skills automatically.[/dim]\n"
+                        )
                     else:
-                        skill_table = Table(title="Learned Procedural Skills (agentskills.io)", show_header=True, header_style="bold yellow")
+                        skill_table = Table(
+                            title="Learned Procedural Skills (agentskills.io)",
+                            show_header=True,
+                            header_style="bold yellow",
+                        )
                         skill_table.add_column("Skill Slug", style="bold green", width=22)
                         skill_table.add_column("Goal Summary", style="white")
                         skill_table.add_column("Tools", style="cyan")
                         skill_table.add_column("Steps", style="magenta", width=6)
                         for name, meta in skills.items():
-                            skill_table.add_row(name, meta.get("summary", "")[:45], ", ".join(meta.get("tools", [])), str(meta.get("steps_count", 0)))
+                            skill_table.add_row(
+                                name,
+                                meta.get("summary", "")[:45],
+                                ", ".join(meta.get("tools", [])),
+                                str(meta.get("steps_count", 0)),
+                            )
                         console.print(skill_table)
                         console.print()
                     continue
@@ -231,7 +245,9 @@ def chat(persona: str, model: Optional[str], no_guardrails: bool):
                     help_table.add_column("Command", style="cyan")
                     help_table.add_column("Description")
                     help_table.add_row("/goal <desc>", "Decompose and execute an autonomous multi-step mission")
-                    help_table.add_row("/search <query>", "Execute FTS5 full-text search across historical conversation memory")
+                    help_table.add_row(
+                        "/search <query>", "Execute FTS5 full-text search across historical conversation memory"
+                    )
                     help_table.add_row("/skills", "List procedural skills synthesized from past autonomous missions")
                     help_table.add_row("/workspace", "List all deliverable files in the workspace")
                     help_table.add_row("/read <file>", "Preview the content of a workspace file")
@@ -244,7 +260,9 @@ def chat(persona: str, model: Optional[str], no_guardrails: bool):
                     continue
 
                 else:
-                    console.print(f"[yellow]Unknown command '{cmd}'. Type [bold]/help[/bold] for available commands.[/yellow]\n")
+                    console.print(
+                        f"[yellow]Unknown command '{cmd}'. Type [bold]/help[/bold] for available commands.[/yellow]\n"
+                    )
                     continue
 
             # Execute Query via JarvisOrchestrator
@@ -256,7 +274,9 @@ def chat(persona: str, model: Optional[str], no_guardrails: bool):
             # Guardrails telemetry notice
             guardrails_meta = result.get("guardrails", {})
             if guardrails_meta.get("input_interception"):
-                console.print(f"[bold red]🛡️ Guardrails Intercept:[/bold red] {guardrails_meta.get('input_policy', 'Security violation')}")
+                console.print(
+                    f"[bold red]🛡️ Guardrails Intercept:[/bold red] {guardrails_meta.get('input_policy', 'Security violation')}"
+                )
 
             # Thought step telemetry
             steps = result.get("steps", [])
@@ -272,7 +292,13 @@ def chat(persona: str, model: Optional[str], no_guardrails: bool):
             # Render output
             output_text = result.get("output", "").strip()
             if output_text:
-                console.print(Panel(Markdown(output_text), title=f"[bold green]J.A.R.V.I.S.[/bold green] [dim]({elapsed:.1f}s)[/dim]", border_style="green"))
+                console.print(
+                    Panel(
+                        Markdown(output_text),
+                        title=f"[bold green]J.A.R.V.I.S.[/bold green] [dim]({elapsed:.1f}s)[/dim]",
+                        border_style="green",
+                    )
+                )
             else:
                 console.print("[dim](No text output generated)[/dim]")
 
@@ -305,7 +331,13 @@ def goal_cmd(mission: str, context: Optional[str], yes: bool):
     from src.core.orchestrator import JarvisOrchestrator
 
     console.print(BANNER)
-    console.print(Panel(f"[bold white]{mission}[/bold white]", title="[bold cyan]Autonomous Mission Directive[/bold cyan]", border_style="cyan"))
+    console.print(
+        Panel(
+            f"[bold white]{mission}[/bold white]",
+            title="[bold cyan]Autonomous Mission Directive[/bold cyan]",
+            border_style="cyan",
+        )
+    )
 
     with console.status("[bold cyan]Initializing J.A.R.V.I.S. core engine...[/bold cyan]", spinner="dots"):
         orchestrator = JarvisOrchestrator()
@@ -333,7 +365,9 @@ def _execute_autonomous_goal_cli(
         return
 
     # Render DAG Plan
-    dag_table = Table(title="[bold yellow]Mission Dependency DAG[/bold yellow]", show_header=True, header_style="bold cyan")
+    dag_table = Table(
+        title="[bold yellow]Mission Dependency DAG[/bold yellow]", show_header=True, header_style="bold cyan"
+    )
     dag_table.add_column("ID", style="bold yellow", width=10)
     dag_table.add_column("Subtask Title", style="white")
     dag_table.add_column("Tool Hint", style="cyan", width=14)
@@ -342,7 +376,13 @@ def _execute_autonomous_goal_cli(
 
     for t in tasks:
         deps = ", ".join(t.get("depends_on", [])) or "None (Root)"
-        dag_table.add_row(t.get("id", ""), t.get("title", ""), t.get("tool_hint", "auto"), t.get("expected_deliverable", "")[:35], deps)
+        dag_table.add_row(
+            t.get("id", ""),
+            t.get("title", ""),
+            t.get("tool_hint", "auto"),
+            t.get("expected_deliverable", "")[:35],
+            deps,
+        )
 
     console.print(dag_table)
     console.print(f"[dim]Goal Summary: {plan.get('goal_summary', '')}[/dim]\n")
@@ -357,6 +397,7 @@ def _execute_autonomous_goal_cli(
     runner = AutonomousRunner(orchestrator=orchestrator)
 
     with console.status("[bold green]Executing DAG...[/bold green]", spinner="dots") as status_spinner:
+
         def on_step(curr_plan: Dict[str, Any], task_id: str, msg: str):
             status_spinner.update(f"[bold green]{msg}[/bold green]")
             console.print(f"  [cyan][>][/cyan] {msg}")
@@ -366,7 +407,9 @@ def _execute_autonomous_goal_cli(
 
     console.print("\n[bold green][OK] Mission Execution Completed![/bold green]")
     synthesis = final_result.get("synthesis", "Mission finished successfully.")
-    console.print(Panel(Markdown(synthesis), title="[bold green]Executive Mission Synthesis[/bold green]", border_style="green"))
+    console.print(
+        Panel(Markdown(synthesis), title="[bold green]Executive Mission Synthesis[/bold green]", border_style="green")
+    )
 
     _render_workspace_table()
 
@@ -394,7 +437,9 @@ def ats_audit(resume_file: str, job_desc_file: str):
                 return res[0]
         return p.read_text(encoding="utf-8", errors="replace")
 
-    with console.status("[bold cyan]Extracting document contents and computing ATS metrics...[/bold cyan]", spinner="dots"):
+    with console.status(
+        "[bold cyan]Extracting document contents and computing ATS metrics...[/bold cyan]", spinner="dots"
+    ):
         resume_text = _read_file_text(resume_file)
         jd_text = _read_file_text(job_desc_file)
 
@@ -433,7 +478,9 @@ def ats_audit(resume_file: str, job_desc_file: str):
     imp = missing.get("important", [])
     if crit or imp:
         console.print(f"\n[bold red]Critical Missing Keywords:[/bold red] {', '.join(crit[:12]) if crit else 'None'}")
-        console.print(f"[bold yellow]Important Preferred Keywords:[/bold yellow] {', '.join(imp[:12]) if imp else 'None'}")
+        console.print(
+            f"[bold yellow]Important Preferred Keywords:[/bold yellow] {', '.join(imp[:12]) if imp else 'None'}"
+        )
     console.print()
 
 
@@ -459,7 +506,9 @@ def doc_cmd(file_path: str, query: Optional[str]):
             markdown_text = p.read_text(encoding="utf-8", errors="replace")
             meta = {"filename": p.name, "engine": "native"}
 
-    console.print(f"[bold green][OK] Ingestion Complete[/bold green] [dim](Engine: {meta.get('engine', 'native')})[/dim]")
+    console.print(
+        f"[bold green][OK] Ingestion Complete[/bold green] [dim](Engine: {meta.get('engine', 'native')})[/dim]"
+    )
 
     if query:
         console.print(f"\n[bold yellow]Querying Document:[/bold yellow] {query}")
@@ -491,7 +540,6 @@ def doc_cmd(file_path: str, query: Optional[str]):
 @click.argument("image_path", type=click.Path(exists=True))
 def vision_cmd(image_path: str):
     """Run YOLOv8 object detection and OCR text extraction on an image."""
-    from PIL import Image
 
     from src.modules.vision.vision_bridge import analyze_image_deep, register_uploaded_image
 
@@ -537,23 +585,30 @@ def vision_cmd(image_path: str):
 # ----------------------------------------------------------------------
 @cli.command("web")
 @click.argument("url")
-@click.option("--tier", default="scrapling", type=click.Choice(["scrapling", "crawl4ai", "firecrawl"]), help="Scraping tier to utilize.")
+@click.option(
+    "--tier",
+    default="scrapling",
+    type=click.Choice(["scrapling", "crawl4ai", "firecrawl"]),
+    help="Scraping tier to utilize.",
+)
 def web_cmd(url: str, tier: str):
     """Extract clean content from a live URL using the 3-Tier Web Intelligence Matrix."""
-    from src.tools.web import crawl4ai_crawler, firecrawl_deep_crawler, scrapling_adaptive_scraper
+    from src.tools.web import crawl_web_dynamic, map_website_urls, scrape_web_adaptive
 
     console.print(f"[bold cyan]Web Intelligence Engine:[/bold cyan] Fetching {url} via Tier: {tier.upper()}...")
 
     with console.status("[bold cyan]Connecting and parsing DOM...[/bold cyan]", spinner="dots"):
         if tier == "scrapling":
-            result = scrapling_adaptive_scraper.invoke({"url": url})
+            result = scrape_web_adaptive.invoke({"url": url})
         elif tier == "crawl4ai":
-            result = crawl4ai_crawler.invoke({"url": url})
+            result = crawl_web_dynamic.invoke({"url": url})
         else:
-            result = firecrawl_deep_crawler.invoke({"url": url})
+            result = map_website_urls.invoke({"root_url": url})
 
     preview = str(result)[:2000] + ("\n...[dim](truncated)[/dim]" if len(str(result)) > 2000 else "")
-    console.print(Panel(Markdown(preview), title=f"[bold green]Scraped Result ({tier})[/bold green]", border_style="green"))
+    console.print(
+        Panel(Markdown(preview), title=f"[bold green]Scraped Result ({tier})[/bold green]", border_style="green")
+    )
 
 
 # ----------------------------------------------------------------------
@@ -561,7 +616,9 @@ def web_cmd(url: str, tier: str):
 # ----------------------------------------------------------------------
 @cli.command("voice")
 @click.argument("audio_file", required=False, type=click.Path(exists=True))
-@click.option("--listen", is_flag=True, help="Activate hands-free ambient wake-word listener ('Jarvis' / 'Hey Jarvis').")
+@click.option(
+    "--listen", is_flag=True, help="Activate hands-free ambient wake-word listener ('Jarvis' / 'Hey Jarvis')."
+)
 def voice_cmd(audio_file: Optional[str], listen: bool):
     """Transcribe and execute a voice directive or run continuous ambient wake-word listening."""
     if listen:
@@ -570,17 +627,21 @@ def voice_cmd(audio_file: Optional[str], listen: bool):
 
         listener = get_wake_listener()
         orchestrator = JarvisOrchestrator()
-        console.print("[bold cyan]Wake-Word Engine Active:[/bold cyan] Listening for [bold green]'Jarvis'[/bold green] or [bold green]'Hey Jarvis'[/bold green]...")
+        console.print(
+            "[bold cyan]Wake-Word Engine Active:[/bold cyan] Listening for [bold green]'Jarvis'[/bold green] or [bold green]'Hey Jarvis'[/bold green]..."
+        )
         console.print("[dim]Speak 'Jarvis' followed by your instruction. Press Ctrl+C to terminate.[/dim]\n")
 
         def _on_wake(phrase: str):
             console.print(f"[bold yellow]Wake keyword spotted:[/bold yellow] '{phrase}'! Listening for directive...")
 
         def _on_directive(directive: str):
-            console.print(f"\n[bold green]Captured Directive:[/bold green] \"{directive}\"")
+            console.print(f'\n[bold green]Captured Directive:[/bold green] "{directive}"')
             with console.status("[bold cyan]Executing directive with J.A.R.V.I.S....[/bold cyan]", spinner="dots"):
                 res = orchestrator.run(user_input=directive, chat_history=[])
-            console.print(Panel(Markdown(res.get("output", "")), title="[bold green]J.A.R.V.I.S. Response[/bold green]"))
+            console.print(
+                Panel(Markdown(res.get("output", "")), title="[bold green]J.A.R.V.I.S. Response[/bold green]")
+            )
 
         listener.on_wake_detected = _on_wake
         listener.start_listening(on_directive=_on_directive)
@@ -605,7 +666,7 @@ def voice_cmd(audio_file: Optional[str], listen: bool):
         # Fallback microphone prompt
         transcript = Prompt.ask("[bold green]Voice Directive[/bold green]")
 
-    console.print(f"[bold green]Transcribed Directive:[/bold green] \"{transcript}\"\n")
+    console.print(f'[bold green]Transcribed Directive:[/bold green] "{transcript}"\n')
     if Confirm.ask("[bold cyan]Dispatch this directive to J.A.R.V.I.S. now?[/bold cyan]", default=True):
         from src.core.orchestrator import JarvisOrchestrator
 
@@ -627,19 +688,27 @@ def gateway_cmd(telegram: bool, token: Optional[str]):
 
     gw = get_telegram_gateway(bot_token=token)
     if not gw.is_configured:
-        console.print("[bold red]Telegram Gateway Error:[/bold red] No TELEGRAM_BOT_TOKEN provided or configured in .env.")
-        console.print("[dim]Set TELEGRAM_BOT_TOKEN in your environment or run: jarvis gateway --token <your_token>[/dim]")
+        console.print(
+            "[bold red]Telegram Gateway Error:[/bold red] No TELEGRAM_BOT_TOKEN provided or configured in .env."
+        )
+        console.print(
+            "[dim]Set TELEGRAM_BOT_TOKEN in your environment or run: jarvis gateway --token <your_token>[/dim]"
+        )
         return
 
     console.print("[bold cyan]Omnichannel Gateway:[/bold cyan] Verifying bot credentials...")
     info = gw.get_me()
     if not info.get("ok"):
-        console.print(f"[bold red]Telegram Gateway Connection Failed:[/bold red] {info.get('description', 'Unknown error')}")
+        console.print(
+            f"[bold red]Telegram Gateway Connection Failed:[/bold red] {info.get('description', 'Unknown error')}"
+        )
         return
 
     bot_user = info.get("result", {}).get("username", "UnknownBot")
     console.print(f"[bold green][OK] Connected as @{bot_user}[/bold green]")
-    console.print("[dim]Long-polling active. Send voice memos, /goal, or chat messages to your Telegram bot. Press Ctrl+C to stop.[/dim]\n")
+    console.print(
+        "[dim]Long-polling active. Send voice memos, /goal, or chat messages to your Telegram bot. Press Ctrl+C to stop.[/dim]\n"
+    )
 
     try:
         gw.poll_forever()
@@ -683,7 +752,9 @@ def _render_workspace_table():
         console.print("[dim]No deliverable files currently in workspace/.[/dim]\n")
         return
 
-    table = Table(title="[bold cyan]Workspace Deliverables (workspace/)[/bold cyan]", show_header=True, header_style="bold yellow")
+    table = Table(
+        title="[bold cyan]Workspace Deliverables (workspace/)[/bold cyan]", show_header=True, header_style="bold yellow"
+    )
     table.add_column("Filename", style="bold white")
     table.add_column("Size", style="cyan", width=12)
     table.add_column("Type", style="green", width=10)

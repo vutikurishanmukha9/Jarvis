@@ -12,7 +12,7 @@ from typing import Any, Dict, List, Optional
 from langchain_core.messages import HumanMessage, SystemMessage
 from langchain_openai import ChatOpenAI
 
-from ..config import MAX_AUTONOMOUS_SUBTASKS, PROVIDERS
+from ..config import MAX_AUTONOMOUS_SUBTASKS, PROVIDERS, SystemConfig
 
 logger = logging.getLogger(__name__)
 
@@ -124,10 +124,11 @@ class GoalPlanner:
         base_url: Optional[str] = None,
         temperature: float = 0.1,
     ):
-        self.api_provider = api_provider
-        self.api_key = api_key
-        self.model_name = model_name
-        self.base_url = base_url or PROVIDERS.get(api_provider, {}).get("base_url")
+        cfg = SystemConfig.from_env()
+        self.api_provider = api_provider if api_key else (cfg.api_provider or api_provider)
+        self.api_key = api_key or cfg.api_key
+        self.model_name = model_name or cfg.model_name
+        self.base_url = base_url or cfg.base_url or PROVIDERS.get(self.api_provider, {}).get("base_url")
         self.temperature = temperature
         self.llm = self._init_llm()
 

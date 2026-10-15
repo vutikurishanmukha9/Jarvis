@@ -6,6 +6,13 @@ import os
 from pathlib import Path
 from typing import Any, Dict, Optional
 
+try:
+    from dotenv import load_dotenv
+
+    load_dotenv()
+except ImportError:
+    pass
+
 from pydantic import BaseModel, Field, field_validator
 
 # Supported Providers and Models
@@ -153,8 +160,27 @@ class SystemConfig(BaseModel):
 
     @classmethod
     def from_env(cls) -> "SystemConfig":
-        """Build validated config from environment variables."""
+        """Build validated config from environment variables, .env, or .streamlit/secrets.toml."""
         provider = os.getenv("JARVIS_PROVIDER", "OpenRouter")
         key = os.getenv("OPENROUTER_API_KEY") or os.getenv("OPENAI_API_KEY") or ""
         model = os.getenv("JARVIS_MODEL", "openai/gpt-4o")
+
+        # Fallback to .streamlit/secrets.toml if env is unset
+        if not key:
+            secrets_path = Path(".streamlit/secrets.toml")
+            if secrets_path.exists():
+                try:
+                    import tomllib
+
+                    with open(secrets_path, "rb") as f:
+                        secrets_data = tomllib.load(f)
+                    key = secrets_data.get("OPENROUTER_API_KEY") or secrets_data.get("OPENAI_API_KEY") or ""
+                    if key.startswith("sk-or-v1-"):
+                        provider = "OpenRouter"
+                        os.environ["OPENROUTER_API_KEY"] = key
+                    elif key:
+                        os.environ["OPENAI_API_KEY"] = key
+                except Exception:
+                    pass
+
         return cls(api_provider=provider, api_key=key, model_name=model)

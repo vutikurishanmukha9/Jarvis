@@ -6,6 +6,8 @@
 .env
 .env.*
 !.env.example
+.envrc
+.op.env
 
 # Python
 __pycache__/
@@ -36,6 +38,10 @@ wheels/
 .coverage
 htmlcov/
 coverage.xml
+test-results/
+playwright-report/
+*-snapshots/
+test_durations.json
 
 # Virtual environments
 venv/
@@ -43,6 +49,18 @@ venv312/
 ENV/
 env/
 .venv/
+.venv
+
+# Node & Frontend Build Artifacts
+node_modules/
+*.tsbuildinfo
+.build/
+.cache/
+apps/desktop/build/
+apps/desktop/dist/
+apps/desktop/release/
+apps/desktop/.staging-*/
+hermes_cli/web_dist/
 
 # IDE & Editor artifacts
 .vscode/
@@ -51,12 +69,34 @@ env/
 *.swo
 *~
 .agents/
+.cursor/
+.zed/
+.codex/
+.mcp.json
 
-# Logs & User Workspace Deliverables
+# Database & Runtime State
 logs/
 *.log
 workspace/*
 !workspace/.gitkeep
+*.db
+*.db-wal
+*.db-shm
+*.db-journal
+*.db.*
+.hermes/
+.hermes-*
+sessions/
+checkpoints/
+pending_messages/
+hook_outputs/
+auth.json
+auth.lock
+vault.key
+vault.json.enc
+cli-config.yaml
+slack_tokens.json
+google_token.json
 
 # Model weights & large binary checkpoints
 *.pt
@@ -69,9 +109,14 @@ workspace/*
 Thumbs.db
 desktop.ini
 
+# Nix & Sandboxes
+.direnv/
+.nix-stamps/
+.hermes-sandbox/
+
 # Vendored & Cloned Framework Repositories (Standardized <= 9 chars)
 scrapling/
 webcrawl/
 hermes/
-
+paperclip/
 

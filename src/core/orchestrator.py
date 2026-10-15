@@ -35,7 +35,7 @@ except ImportError:
 
 from ..assistant.profile_manager import ProfileManager
 from ..assistant.workspace_tools import get_workspace_tools
-from ..config import PERSONAS, PROVIDERS
+from ..config import PERSONAS, PROVIDERS, SystemConfig
 from ..modules.career import get_career_tools
 from ..modules.outreach import get_outreach_tools
 from ..modules.vision import get_and_clear_annotated_images, get_vision_tools
@@ -95,10 +95,11 @@ class JarvisOrchestrator:
         interrupt_on: Optional[Dict[str, Any]] = None,
         enable_guardrails: bool = True,
     ) -> None:
-        self.api_provider = api_provider
-        self.api_key = api_key
-        self.model_name = model_name
-        self.base_url = base_url or PROVIDERS.get(api_provider, {}).get("base_url")
+        cfg = SystemConfig.from_env()
+        self.api_provider = api_provider if api_key else (cfg.api_provider or api_provider)
+        self.api_key = api_key or cfg.api_key
+        self.model_name = model_name or cfg.model_name
+        self.base_url = base_url or cfg.base_url or PROVIDERS.get(self.api_provider, {}).get("base_url")
         self.temperature = temperature
         self.persona = persona
         self.deep_research_mode = deep_research_mode
