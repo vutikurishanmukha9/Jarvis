@@ -1,12 +1,15 @@
-# J.A.R.V.I.S. — Autonomous Multi-Modal Agent Intelligence Platform
+<div align="center">
+
+# J.A.R.V.I.S.
+### Autonomous Multi-Modal Agent Intelligence Platform
 
 ```text
-      ██╗ █████╗ ██████╗ ██╗   ██╗██╗███████╗
-      ██║██╔══██╗██╔══██╗██║   ██║██║██╔════╝
-      ██║███████║██████╔╝██║   ██║██║███████╗
- ██   ██║██╔══██║██╔══██╗╚██╗ ██╔╝██║╚════██║
- ╚█████╔╝██║  ██║██║  ██║ ╚████╔╝ ██║███████║
-  ╚════╝ ╚═╝  ╚═╝╚═╝  ╚═╝  ╚═══╝  ╚═╝╚══════╝
+                     ██╗ █████╗ ██████╗ ██╗   ██╗██╗███████╗
+                     ██║██╔══██╗██╔══██╗██║   ██║██║██╔════╝
+                     ██║███████║██████╔╝██║   ██║██║███████╗
+                ██   ██║██╔══██║██╔══██╗╚██╗ ██╔╝██║╚════██║
+                ╚█████╔╝██║  ██║██║  ██║ ╚████╔╝ ██║███████║
+                 ╚════╝ ╚═╝  ╚═╝╚═╝  ╚═╝  ╚═══╝  ╚═╝╚══════╝
 Joint Autonomous Real-time Vision & Intelligence System — CLI & Web Platform
 ```
 
@@ -26,6 +29,8 @@ Joint Autonomous Real-time Vision & Intelligence System — CLI & Web Platform
 [![FAISS](https://img.shields.io/badge/FAISS-Vector%20Search-blueviolet.svg)](https://github.com/facebookresearch/faiss)
 [![PyTorch](https://img.shields.io/badge/PyTorch-2.0+-ee4c2c.svg)](https://pytorch.org/)
 [![License](https://img.shields.io/badge/License-MIT-lightgrey.svg)](LICENSE)
+
+</div>
 
 **J.A.R.V.I.S.** (Joint Autonomous Real-time Vision & Intelligence System) is an enterprise-grade autonomous AI super-intelligence platform and executive personal assistant. Engineered on **Deep Agents**, **LangGraph**, **Guardrails AI**, **Voice Studio (Faster-Whisper)**, **browser-use**, **Docling**, **MinerU**, **LangExtract**, **Scrapling**, and **PaddleOCR**, it empowers users by breaking down high-level human objectives into executable dependency DAGs, taking real-time voice commands, delegating tasks to domain-isolated specialist sub-agents, interacting with live web applications via Brave & Chrome DevTools, performing deep document intelligence with LaTeX formula extraction, executing SOTA scene text OCR with angle classification, enforcing kernel-level process sandboxing via Windows Job Objects, and generating real-world deliverables (Microsoft Excel workbooks, Word documents, Markdown briefings, and Python automation scripts) in a secure, sandboxed environment.
 
