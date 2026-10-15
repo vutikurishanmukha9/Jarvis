@@ -1,5 +1,15 @@
 # J.A.R.V.I.S. — Autonomous Multi-Modal Agent Intelligence Platform
 
+```text
+      ██╗ █████╗ ██████╗ ██╗   ██╗██╗███████╗
+      ██║██╔══██╗██╔══██╗██║   ██║██║██╔════╝
+      ██║███████║██████╔╝██║   ██║██║███████╗
+ ██   ██║██╔══██║██╔══██╗╚██╗ ██╔╝██║╚════██║
+ ╚█████╔╝██║  ██║██║  ██║ ╚████╔╝ ██║███████║
+  ╚════╝ ╚═╝  ╚═╝╚═╝  ╚═╝  ╚═══╝  ╚═╝╚══════╝
+Joint Autonomous Real-time Vision & Intelligence System — CLI & Web Platform
+```
+
 [![Python](https://img.shields.io/badge/Python-3.12-blue.svg)](https://www.python.org/)
 [![Streamlit](https://img.shields.io/badge/Streamlit-1.51+-red.svg)](https://streamlit.io/)
 [![Deep Agents](https://img.shields.io/badge/Deep%20Agents-Core%20Harness-purple.svg)](https://docs.langchain.com/oss/python/deepagents/overview)
