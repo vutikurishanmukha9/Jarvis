@@ -3,9 +3,15 @@ Shared fixtures and test doubles for the J.A.R.V.I.S. automated test suite.
 """
 
 import io
+import os
 
 import pytest
 from PIL import Image
+
+# Ensure headless and CI environments have mock API credentials for offline testing
+os.environ.setdefault("OPENAI_API_KEY", "sk-test-mock-key-for-jarvis-ci-1234567890abcdef")
+os.environ.setdefault("OPENROUTER_API_KEY", "sk-or-v1-mock-key-for-jarvis-ci-1234567890abcdef")
+os.environ.setdefault("TELEGRAM_BOT_TOKEN", "123456789:ABCdefGHIjklMNOpqrsTUVwxyz123456")
 
 
 class MockUploadedFile:

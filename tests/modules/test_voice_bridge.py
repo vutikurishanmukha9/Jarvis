@@ -4,7 +4,6 @@ Unit tests for J.A.R.V.I.S. Voice Intelligence Bridge.
 
 import io
 from unittest.mock import MagicMock, patch
-import pytest
 
 from src.modules.voice.voice_bridge import (
     is_local_whisper_available,
@@ -90,8 +89,10 @@ def test_transcribe_fallback_to_openai_api():
     mock_transcript.text = "Draft a recruiter outreach campaign"
     mock_openai_client.audio.transcriptions.create.return_value = mock_transcript
 
-    with patch("src.modules.voice.voice_bridge.is_local_whisper_available", return_value=False), \
-         patch("openai.OpenAI", return_value=mock_openai_client):
+    with (
+        patch("src.modules.voice.voice_bridge.is_local_whisper_available", return_value=False),
+        patch("openai.OpenAI", return_value=mock_openai_client),
+    ):
         res = transcribe_voice_directive(fake_audio, api_key="sk-test-key")
 
     assert res["success"] is True

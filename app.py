@@ -369,7 +369,7 @@ with tab_chat:
                     if chat_res.get("success"):
                         st.session_state.last_chat_audio_hash = chat_audio_hash
                         quick_prompt = chat_res.get("text", "")
-                        st.toast(f"🎙️ Voice Prompt: \"{quick_prompt}\"", icon="🎙️")
+                        st.toast(f'🎙️ Voice Prompt: "{quick_prompt}"', icon="🎙️")
                     else:
                         st.error(f"Voice transcription failed: {chat_res.get('error')}")
 
@@ -411,11 +411,15 @@ with tab_chat:
                             elif st_type in ["tool_error", "error"]:
                                 st.markdown(f"**[{t_time}] Error:** {step.get('error')}")
                             elif st_type == "guardrails_intercept":
-                                st.warning(f"**[{t_time}] 🛡️ Guardrails Intercept ({step.get('stage', '').upper()}):** {step.get('action', '').upper()} | Risk: {step.get('risk_score')}")
+                                st.warning(
+                                    f"**[{t_time}] 🛡️ Guardrails Intercept ({step.get('stage', '').upper()}):** {step.get('action', '').upper()} | Risk: {step.get('risk_score')}"
+                                )
                                 for viol in step.get("violations", []):
                                     st.caption(f"- {viol}")
                             elif st_type == "guardrails_verified":
-                                st.caption(f"🛡️ Guardrails Verified ({step.get('stage', '').upper()}): Clean ({step.get('latency_ms', 0):.1f}ms)")
+                                st.caption(
+                                    f"🛡️ Guardrails Verified ({step.get('stage', '').upper()}): Clean ({step.get('latency_ms', 0):.1f}ms)"
+                                )
 
                 # Render Figures
                 figures = result.get("figures", [])
@@ -503,7 +507,7 @@ with tab_mission:
                     transcribed_cmd = transcribe_res.get("text", "")
                     st.session_state.active_goal_directive = transcribed_cmd
                     st.session_state.last_transcribed_audio_hash = audio_hash
-                    st.toast(f"🎙️ Transcribed: \"{transcribed_cmd}\"", icon="🎙️")
+                    st.toast(f'🎙️ Transcribed: "{transcribed_cmd}"', icon="🎙️")
                     if auto_launch_voice:
                         voice_triggered_mission = True
                 else:

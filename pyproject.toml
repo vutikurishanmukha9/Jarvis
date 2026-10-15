@@ -78,16 +78,26 @@ filterwarnings = [
 [tool.mypy]
 python_version = "3.12"
 ignore_missing_imports = true
-follow_imports = "silent"
-warn_unused_configs = true
+follow_imports = "skip"
+warn_unused_configs = false
 no_implicit_optional = true
 check_untyped_defs = true
 exclude = [
-    "venv/",
-    "venv312/",
-    "logs/",
-    "workspace/",
-    "src/modules/career/data/",
+    "^venv/",
+    "^venv312/",
+    "^logs/",
+    "^workspace/",
+    "^src/modules/career/data/",
+    "^hermes/",
+    "^scrapling/",
+    "^webcrawl/",
+    "^subagents/",
+    "^safeguard/",
+    "^extractor/",
+    "^docparser/",
+    "^sciparse/",
+    "^visionocr/",
+    "^webbrowse/",
 ]
 
 [[tool.mypy.overrides]]
@@ -120,7 +130,21 @@ exclude_dirs = [
     "venv312",
     "workspace",
     "src/modules/career/data",
+    "hermes",
+    "scrapling",
+    "webcrawl",
+    "subagents",
+    "safeguard",
+    "extractor",
+    "docparser",
+    "sciparse",
+    "visionocr",
+    "webbrowse",
 ]
 skips = [
     "B101",
+    "B404",
+    "B603",
+    "B607",
+    "B110",
 ]

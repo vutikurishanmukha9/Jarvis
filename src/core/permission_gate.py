@@ -12,7 +12,7 @@ Enforces zero-trust automated browser navigation policies across 25+ browser per
 from __future__ import annotations
 
 import logging
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from enum import Enum
 from typing import Any, Dict, Optional, Tuple
 
@@ -101,7 +101,6 @@ _DEFAULT_POLICY_MAP: Dict[str, Tuple[PermissionPolicy, str, Optional[Dict[str, A
         "Encrypted Media Extensions permitted for media playback testing.",
         None,
     ),
-
     # 2. Synthetic Privacy Defenses (MOCK)
     "location": (
         PermissionPolicy.MOCK,
@@ -143,7 +142,6 @@ _DEFAULT_POLICY_MAP: Dict[str, Tuple[PermissionPolicy, str, Optional[Dict[str, A
         "Device motion sensors mocked to prevent physical vibration fingerprinting.",
         {"acceleration": {"x": 0.0, "y": 0.0, "z": 9.8}, "rotationRate": {"alpha": 0.0, "beta": 0.0, "gamma": 0.0}},
     ),
-
     # 3. High-Risk Hardware Sensors (REQUIRE_HUMAN_APPROVAL)
     "camera": (
         PermissionPolicy.REQUIRE_HUMAN_APPROVAL,
@@ -185,7 +183,6 @@ _DEFAULT_POLICY_MAP: Dict[str, Tuple[PermissionPolicy, str, Optional[Dict[str, A
         "Hardware security token authentication requires explicit human user interaction.",
         None,
     ),
-
     # 4. Strictly Prohibited Peripheral & Local APIs (DENY)
     "usb": (
         PermissionPolicy.DENY,

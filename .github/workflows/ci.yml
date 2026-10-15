@@ -15,7 +15,10 @@ concurrency:
   cancel-in-progress: true
 
 env:
-  PYTHONPATH: ".:deepagents/libs/deepagents:browser-use:docling:langextract:MinerU:PaddleOCR:PaddleOCR/langchain-paddleocr"
+  PYTHONPATH: ".:subagents/libs/deepagents:webbrowse:docparser:extractor:sciparse:visionocr:visionocr/langchain-paddleocr:safeguard"
+  OPENAI_API_KEY: "sk-test-mock-key-for-jarvis-ci-1234567890abcdef"
+  OPENROUTER_API_KEY: "sk-or-v1-mock-key-for-jarvis-ci-1234567890abcdef"
+  TELEGRAM_BOT_TOKEN: "123456789:ABCdefGHIjklMNOpqrsTUVwxyz123456"
 
 jobs:
   # ==========================================

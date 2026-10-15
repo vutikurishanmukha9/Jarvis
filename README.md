@@ -162,6 +162,27 @@ J.A.R.V.I.S. is architected on seven foundational engineering pillars:
 2. **Chrome DevTools Protocol (CDP)**: Low-level browser automation supporting CSS selector clicking, multi-field form submission, DOM inspection, and viewport scrolling.
 3. **Granular Permission Gate**: 25+ browser and OS permission controls (Camera, Microphone, Geolocation, Notifications, Clipboard, MIDI, USB, Bluetooth) with strict origin auditing and zero-trust policies.
 
+### 8. Omnichannel Messaging Gateway & Remote Control (Telegram Bot Bridge)
+1. **Bidirectional Remote Control**: Full smartphone remote interaction with J.A.R.V.I.S. over Telegram Bot API using asynchronous `httpx` long-polling.
+2. **Autonomous Voice Memo Execution**: Send voice notes from your mobile device; Faster-Whisper automatically downloads, normalizes, and transcribes directives for execution.
+3. **Remote Mission Planning (`/goal`)**: Trigger complex DAG autonomous goal executions on your host system directly from Telegram with live task progress streaming.
+4. **Automated Deliverable Dispatch**: Generated deliverable documents (`.xlsx`, `.docx`, `.md`) are automatically detected and uploaded straight to your Telegram chat upon mission completion.
+
+### 9. Continuous Hands-Free Ambient Wake-Word Engine
+1. **Acoustic Keyword Spotting**: Always-on ambient listener spotting `"Jarvis"` and `"Hey Jarvis"` acoustic keywords.
+2. **Windows SAPI & Speech Recognition**: Zero-dependency OS-level continuous acoustic stream spotter utilizing PowerShell System.Speech without requiring heavy external models.
+3. **Instant Speech Directive Capture**: Seamless transition from wake detection to directive speech recording and Faster-Whisper neural transcription.
+
+### 10. SQLite WAL + FTS5 Full-Text Search Conversational Memory
+1. **Sub-Millisecond Retrieval**: High-throughput SQLite database engine with Write-Ahead Logging (`WAL`) and `PRAGMA synchronous=NORMAL` for concurrent multi-thread read/write.
+2. **FTS5 Virtual Full-Text Indexing**: Porter-stemmed unicode61 full-text search indexing across thousands of conversation turns.
+3. **Rich Snippet Extraction**: Instant keyword query execution with highlighted snippet boundaries via `/search <query>` slash command in the CLI.
+
+### 11. Closed-Loop Procedural Skill Synthesis (`agentskills.io`)
+1. **Automated Skill Synthesis**: Successful multi-step autonomous goal executions are automatically analyzed and compiled into reusable skill bundles.
+2. **Open Standard Formatting**: Generates `agentskills.io`-compliant `SKILL.md` documents complete with YAML frontmatter, tool requirements, and step-by-step instructions.
+3. **Registry-Backed Reusability**: Centralized registry (`workspace/skills/registry.json`) allowing J.A.R.V.I.S. to reuse proven workflows on future goals.
+
 ---
 
 ## Core Product Capabilities
@@ -362,9 +383,26 @@ python cli.py web https://news.ycombinator.com --tier scrapling
 # Transcribe and dispatch a voice directive
 python cli.py voice audio_memo.wav
 
+# Hands-free continuous ambient wake-word listener ("Jarvis" / "Hey Jarvis")
+python cli.py voice --listen
+
+# Launch the Omnichannel Telegram Bot Gateway for mobile remote control
+python cli.py gateway --token your_telegram_bot_token
+
 # Inspect and manage deliverables in the sandboxed workspace
 python cli.py workspace
 ```
+
+##### Interactive CLI Slash Commands:
+Inside the interactive REPL (`python cli.py`), utilize instant slash directives:
+- `/goal <description>` — Plan and run an autonomous topological DAG mission
+- `/search <query>` — Sub-millisecond FTS5 full-text search across historical conversation memory
+- `/skills` — List and inspect procedural skills synthesized from completed missions
+- `/workspace` — List and manage deliverable files
+- `/read <file>` — Preview the contents of any workspace file
+- `/profile` — View user profile metadata and long-term memory confidence
+- `/history` — Display turn history for the active session
+- `/clear` — Reset active conversational context
 
 #### Option B: Streamlit Web Dashboard
 ```bash

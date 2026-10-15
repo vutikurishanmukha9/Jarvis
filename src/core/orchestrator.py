@@ -107,6 +107,7 @@ class JarvisOrchestrator:
         self.interrupt_on = interrupt_on
         self.enable_guardrails = enable_guardrails
         self.guardrails = get_guardrails()
+        self.session_id = f"session_{time.strftime('%Y%m%d_%H%M%S')}"
 
         # Construct Agent Components
         self.llm = self._init_llm()
@@ -482,6 +483,20 @@ class JarvisOrchestrator:
                         "timestamp": time.strftime("%H:%M:%S"),
                     }
                 )
+
+        # Index turn into SQLite WAL & FTS5 full-text memory (Hermes State Engine)
+        try:
+            from .sqlite_session import get_sqlite_memory
+
+            tools_called = [s.get("tool", "") for s in tracer.steps if s.get("tool")]
+            store = get_sqlite_memory()
+            session_id = getattr(self, "session_id", "default_session")
+            store.record_turn(session_id=session_id, role="human", content=user_input, persona=self.persona)
+            store.record_turn(
+                session_id=session_id, role="ai", content=output_text, persona=self.persona, tools_called=tools_called
+            )
+        except Exception as e:
+            logger.debug("SQLite FTS5 memory recording skipped: %s", e)
 
         # Collect any generated plots and annotated images
         figures = get_and_clear_figure_buffer()

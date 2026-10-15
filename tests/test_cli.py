@@ -3,6 +3,7 @@ Unit and integration tests for J.A.R.V.I.S. CLI interface.
 """
 
 from click.testing import CliRunner
+
 from cli import cli
 
 
@@ -19,6 +20,8 @@ def test_cli_help():
     assert "vision" in result.output
     assert "web" in result.output
     assert "workspace" in result.output
+    assert "voice" in result.output
+    assert "gateway" in result.output
 
 
 def test_cli_workspace_command():

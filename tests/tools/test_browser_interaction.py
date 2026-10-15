@@ -55,5 +55,3 @@ def test_get_browser_tools_suite() -> None:
     assert "browser_capture_screenshot" in tool_names
     assert "toggle_brave_shields" in tool_names
     assert "check_browser_permission" in tool_names
-
-

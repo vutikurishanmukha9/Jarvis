@@ -4,7 +4,6 @@ Tests Job Object creation, process assignment, memory limits, timeouts, and sand
 """
 
 import sys
-from unittest.mock import MagicMock, patch
 
 from src.core.job_sandbox import (
     WindowsJobSandbox,

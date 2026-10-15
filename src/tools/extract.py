@@ -110,7 +110,7 @@ def extract_grounded_entities(
                 }
 
             alignment_status = getattr(item, "alignment_status", None)
-            status_val = alignment_status.value if hasattr(alignment_status, "value") else str(alignment_status)
+            status_val = getattr(alignment_status, "value", str(alignment_status))
 
             extractions_list.append(
                 {

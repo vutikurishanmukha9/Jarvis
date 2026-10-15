@@ -4,7 +4,6 @@ Unit tests for J.A.R.V.I.S. 3-Tier Web Intelligence Matrix
 """
 
 from unittest.mock import MagicMock, patch
-import pytest
 
 from src.tools.web import (
     crawl_web_dynamic,
@@ -53,12 +52,16 @@ def test_scrape_web_adaptive_success():
     mock_resp.content = sample_html
     mock_resp.raise_for_status.return_value = None
 
-    with patch("src.tools.web._fetch_with_safe_redirects", return_value=mock_resp), \
-         patch("src.tools.web._validate_url", return_value=""):
-        res = scrape_web_adaptive.invoke({
-            "url": "https://example.com/quantum",
-            "css_selector": ".target-card",
-        })
+    with (
+        patch("src.tools.web._fetch_with_safe_redirects", return_value=mock_resp),
+        patch("src.tools.web._validate_url", return_value=""),
+    ):
+        res = scrape_web_adaptive.invoke(
+            {
+                "url": "https://example.com/quantum",
+                "css_selector": ".target-card",
+            }
+        )
 
     assert "Quantum Computing Lab" in res
     assert "Breakthrough Qubit Scaling" in res
@@ -80,8 +83,10 @@ def test_crawl_web_dynamic_fallback():
     mock_resp.headers = {"Content-Length": str(len(html_bytes))}
     mock_resp.raise_for_status.return_value = None
 
-    with patch("src.tools.web._validate_url", return_value=""), \
-         patch("src.tools.web._fetch_with_safe_redirects", return_value=mock_resp):
+    with (
+        patch("src.tools.web._validate_url", return_value=""),
+        patch("src.tools.web._fetch_with_safe_redirects", return_value=mock_resp),
+    ):
         res = crawl_web_dynamic.invoke({"url": "https://example.com/spa-app"})
 
     assert "Test App" in res
@@ -111,13 +116,17 @@ def test_map_website_urls_native_sitemapper():
     mock_resp.content = sample_html
     mock_resp.raise_for_status.return_value = None
 
-    with patch("src.tools.web._fetch_with_safe_redirects", return_value=mock_resp), \
-         patch("src.tools.web._validate_url", return_value=""):
+    with (
+        patch("src.tools.web._fetch_with_safe_redirects", return_value=mock_resp),
+        patch("src.tools.web._validate_url", return_value=""),
+    ):
         # Filter for 'distributed'
-        res = map_website_urls.invoke({
-            "root_url": "https://pytorch.org",
-            "search_query": "distributed",
-        })
+        res = map_website_urls.invoke(
+            {
+                "root_url": "https://pytorch.org",
+                "search_query": "distributed",
+            }
+        )
 
     assert "https://pytorch.org/docs/distributed" in res
     assert "external-site.com" not in res

@@ -220,7 +220,6 @@ def python_interpreter(code: str) -> str:
     except ImportError:
         pass
 
-    plt: Any = None
     try:
         import matplotlib
 
@@ -230,7 +229,7 @@ def python_interpreter(code: str) -> str:
         local_env["plt"] = plt
         local_env["matplotlib"] = matplotlib
     except ImportError:
-        pass
+        local_env["plt"] = None
 
     try:
         import plotly.express as px
@@ -347,4 +346,3 @@ def sandboxed_python_runner(code: str) -> str:
     if not stdout.strip() and not stderr.strip():
         parts.append("[Success: Script executed without output]")
     return "\n\n".join(parts)
-

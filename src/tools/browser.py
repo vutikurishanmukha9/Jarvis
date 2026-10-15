@@ -68,9 +68,7 @@ def get_brave_executable_path() -> Optional[str]:
     ]
     local_app_data = os.getenv("LOCALAPPDATA")
     if local_app_data:
-        win_candidates.append(
-            os.path.join(local_app_data, r"BraveSoftware\Brave-Browser\Application\brave.exe")
-        )
+        win_candidates.append(os.path.join(local_app_data, r"BraveSoftware\Brave-Browser\Application\brave.exe"))
 
     for path in win_candidates:
         if os.path.isfile(path):

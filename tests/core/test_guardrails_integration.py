@@ -5,10 +5,7 @@ orchestrator interception, telemetry metrics, and thread safety.
 """
 
 import concurrent.futures
-from unittest.mock import MagicMock, patch
-
-import pytest
-from langchain_core.messages import AIMessage, HumanMessage
+from unittest.mock import MagicMock
 
 from src.core.guardrails_bridge import (
     GuardrailsBridge,
@@ -152,9 +149,7 @@ def test_orchestrator_guardrails_output_suppression() -> None:
 
     # Mock the agent executor to return an output containing a leaked secret
     mock_executor = MagicMock()
-    mock_executor.invoke.return_value = {
-        "output": "Here is the master token: ghp_1234567890abcdef1234567890abcdef1234"
-    }
+    mock_executor.invoke.return_value = {"output": "Here is the master token: ghp_1234567890abcdef1234567890abcdef1234"}
     orchestrator.agent_executor = mock_executor
 
     response = orchestrator.run("What is the token?", chat_history=[])

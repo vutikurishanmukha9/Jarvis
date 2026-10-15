@@ -264,12 +264,24 @@ class AutonomousRunner:
         plan["status"] = "partially_completed" if timed_out else "completed"
         final_summary = self._generate_mission_summary(initial_goal, plan)
 
+        # Closed-loop procedural skill extraction (Hermes Learning Loop)
+        learned_skill = None
+        if plan["status"] == "completed":
+            try:
+                from .skill_learner import get_skill_learner
+
+                learner = get_skill_learner()
+                learned_skill = learner.learn_from_completed_plan(initial_goal, plan, final_synthesis=final_summary)
+            except Exception as e:
+                logger.debug("Skill learning skipped: %s", e)
+
         return {
             "plan": plan,
             "final_summary": final_summary,
             "steps": all_steps,
             "figures": all_figures,
             "annotated_images": all_annotated_imgs,
+            "learned_skill": learned_skill,
         }
 
     def _generate_mission_summary(self, goal: str, plan: Dict[str, Any]) -> str:

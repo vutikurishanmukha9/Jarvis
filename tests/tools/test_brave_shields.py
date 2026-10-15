@@ -7,7 +7,6 @@ DOM ad-stripping token reduction, and the toggle_brave_shields tool.
 from unittest.mock import MagicMock, patch
 
 from src.tools.browser import (
-    BRAVE_SHIELDS_BLOCKED_DOMAINS,
     get_brave_executable_path,
     get_browser_session,
     get_browser_tools,

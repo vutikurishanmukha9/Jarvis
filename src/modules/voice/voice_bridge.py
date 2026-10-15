@@ -26,6 +26,7 @@ def is_local_whisper_available() -> bool:
     """Check if faster-whisper is installed and importable."""
     try:
         import faster_whisper  # noqa: F401
+
         return True
     except ImportError:
         return False
@@ -45,7 +46,12 @@ def get_local_whisper_model(model_size: str = "base", device: str = "cpu", compu
         try:
             from faster_whisper import WhisperModel
 
-            logger.info("Initializing faster-whisper model (size: %s, device: %s, compute: %s)...", model_size, device, compute_type)
+            logger.info(
+                "Initializing faster-whisper model (size: %s, device: %s, compute: %s)...",
+                model_size,
+                device,
+                compute_type,
+            )
             model = WhisperModel(model_size, device=device, compute_type=compute_type)
             _CACHED_WHISPER_MODEL = model
             _CACHED_MODEL_SIZE = model_size
@@ -64,12 +70,12 @@ def transcribe_voice_directive(
 ) -> dict[str, Any]:
     """
     Transcribes voice audio to text.
-    
+
     Accepts:
         - raw bytes
         - io.BytesIO or file-like buffer (from Streamlit st.audio_input)
         - str/Path to a recorded audio file
-        
+
     Returns:
         {
             "success": True/False,
@@ -96,14 +102,14 @@ def transcribe_voice_directive(
         if isinstance(audio_data, (str, Path)):
             audio_path = str(audio_data)
         else:
-            # Extract bytes
-            if hasattr(audio_data, "getvalue"):
+            if isinstance(audio_data, bytes):
+                raw_bytes = audio_data
+            elif hasattr(audio_data, "getvalue"):
                 raw_bytes = audio_data.getvalue()
             elif hasattr(audio_data, "read"):
-                audio_data.seek(0)
+                if hasattr(audio_data, "seek"):
+                    audio_data.seek(0)
                 raw_bytes = audio_data.read()
-            elif isinstance(audio_data, bytes):
-                raw_bytes = audio_data
             else:
                 return {
                     "success": False,

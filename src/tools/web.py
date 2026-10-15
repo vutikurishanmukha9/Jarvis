@@ -229,6 +229,7 @@ def scrape_web_adaptive(url: str, css_selector: str = "body") -> str:
         try:
             import sys
             from pathlib import Path
+
             project_root = Path(__file__).resolve().parent.parent.parent
             scrapling_path = project_root / "scrapling"
             if str(scrapling_path) not in sys.path:
@@ -281,6 +282,7 @@ def crawl_web_dynamic(url: str, css_selector: str = "") -> str:
         import asyncio
         import sys
         from pathlib import Path
+
         project_root = Path(__file__).resolve().parent.parent.parent
         crawl_path = project_root / "webcrawl"
         if str(crawl_path) not in sys.path:
@@ -312,6 +314,7 @@ def crawl_web_dynamic(url: str, css_selector: str = "") -> str:
 
             if loop.is_running():
                 import nest_asyncio
+
                 nest_asyncio.apply()
 
             markdown_res = loop.run_until_complete(_run_crawl())
@@ -350,8 +353,9 @@ def map_website_urls(root_url: str, search_query: str = "") -> str:
 
     try:
         import os
-        import httpx
         from urllib.parse import urljoin, urlparse
+
+        import httpx
 
         # 1. Check if Firecrawl API key is present
         api_key = os.environ.get("FIRECRAWL_API_KEY")
@@ -393,7 +397,11 @@ def map_website_urls(root_url: str, search_query: str = "") -> str:
             full_url = urljoin(root_url, href)
             parsed_full = urlparse(full_url)
             if parsed_full.netloc.lower() == base_domain and parsed_full.scheme in {"http", "https"}:
-                if not search_query or search_query.lower() in full_url.lower() or (a_tag.string and search_query.lower() in a_tag.string.lower()):
+                if (
+                    not search_query
+                    or search_query.lower() in full_url.lower()
+                    or (a_tag.string and search_query.lower() in a_tag.string.lower())
+                ):
                     discovered_links.add(full_url)
 
         sorted_links = sorted(list(discovered_links))[:30]

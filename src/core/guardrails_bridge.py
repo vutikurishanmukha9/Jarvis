@@ -13,7 +13,7 @@ import threading
 import time
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional
 
 logger = logging.getLogger(__name__)
 
@@ -28,6 +28,7 @@ _GUARDRAILS_AI_AVAILABLE = False
 Guard = None
 try:
     from guardrails import Guard as _Guard
+
     Guard = _Guard
     _GUARDRAILS_AI_AVAILABLE = True
 except Exception as e:
@@ -105,7 +106,7 @@ class GuardrailsBridge:
         self._compiled_injections = [re.compile(p) for p in self.INJECTION_PATTERNS]
         self._compiled_secrets = [(re.compile(p), name) for p, name in self.SECRET_PATTERNS]
         self._compiled_pii = [(re.compile(p), name) for p, name in self.PII_PATTERNS]
-        
+
         # Telemetry counters
         self._stats_lock = threading.Lock()
         self._total_inputs_evaluated = 0
@@ -133,7 +134,7 @@ class GuardrailsBridge:
     ) -> GuardValidationResult:
         """
         Validate incoming user query against prompt injection, jailbreaks, and PII.
-        
+
         Returns:
             GuardValidationResult indicating pass/fail, violations, and sanitized text.
         """

@@ -186,11 +186,53 @@ def chat(persona: str, model: Optional[str], no_guardrails: bool):
                         _execute_autonomous_goal_cli(arg, orchestrator)
                     continue
 
+                elif cmd == "/search":
+                    if not arg:
+                        console.print("[red]Usage: /search <keyword or phrase>[/red]")
+                    else:
+                        from src.core.sqlite_session import get_sqlite_memory
+
+                        store = get_sqlite_memory()
+                        matches = store.search_memory(arg, limit=5)
+                        if not matches:
+                            console.print(f"[dim]No matching conversation memories found for '{arg}'.[/dim]\n")
+                        else:
+                            search_table = Table(title=f"Memory Search Results for '{arg}'", show_header=True, header_style="bold yellow")
+                            search_table.add_column("Session", style="cyan", width=22)
+                            search_table.add_column("Role", style="magenta", width=8)
+                            search_table.add_column("Matching Snippet", style="white")
+                            for m in matches:
+                                search_table.add_row(m["session_id"][:20], m["role"], m["snippet"])
+                            console.print(search_table)
+                            console.print()
+                    continue
+
+                elif cmd == "/skills":
+                    from src.assistant.skill_learner import get_skill_learner
+
+                    learner = get_skill_learner()
+                    skills = learner.get_registered_skills()
+                    if not skills:
+                        console.print("[dim]No procedural skills learned yet. Run '/goal <mission>' to synthesize skills automatically.[/dim]\n")
+                    else:
+                        skill_table = Table(title="Learned Procedural Skills (agentskills.io)", show_header=True, header_style="bold yellow")
+                        skill_table.add_column("Skill Slug", style="bold green", width=22)
+                        skill_table.add_column("Goal Summary", style="white")
+                        skill_table.add_column("Tools", style="cyan")
+                        skill_table.add_column("Steps", style="magenta", width=6)
+                        for name, meta in skills.items():
+                            skill_table.add_row(name, meta.get("summary", "")[:45], ", ".join(meta.get("tools", [])), str(meta.get("steps_count", 0)))
+                        console.print(skill_table)
+                        console.print()
+                    continue
+
                 elif cmd == "/help":
                     help_table = Table(title="Slash Commands", show_header=True, header_style="bold magenta")
                     help_table.add_column("Command", style="cyan")
                     help_table.add_column("Description")
                     help_table.add_row("/goal <desc>", "Decompose and execute an autonomous multi-step mission")
+                    help_table.add_row("/search <query>", "Execute FTS5 full-text search across historical conversation memory")
+                    help_table.add_row("/skills", "List procedural skills synthesized from past autonomous missions")
                     help_table.add_row("/workspace", "List all deliverable files in the workspace")
                     help_table.add_row("/read <file>", "Preview the content of a workspace file")
                     help_table.add_row("/profile", "Inspect user profile directives and long-term memory")
@@ -515,18 +557,49 @@ def web_cmd(url: str, tier: str):
 
 
 # ----------------------------------------------------------------------
-# Command: Voice Directive
+# Command: Voice Directive & Ambient Wake-Word Engine
 # ----------------------------------------------------------------------
 @cli.command("voice")
 @click.argument("audio_file", required=False, type=click.Path(exists=True))
-def voice_cmd(audio_file: Optional[str]):
-    """Transcribe and execute a voice directive using Faster-Whisper / Windows SAPI."""
+@click.option("--listen", is_flag=True, help="Activate hands-free ambient wake-word listener ('Jarvis' / 'Hey Jarvis').")
+def voice_cmd(audio_file: Optional[str], listen: bool):
+    """Transcribe and execute a voice directive or run continuous ambient wake-word listening."""
+    if listen:
+        from src.core.orchestrator import JarvisOrchestrator
+        from src.modules.voice.wake_word import get_wake_listener
+
+        listener = get_wake_listener()
+        orchestrator = JarvisOrchestrator()
+        console.print("[bold cyan]Wake-Word Engine Active:[/bold cyan] Listening for [bold green]'Jarvis'[/bold green] or [bold green]'Hey Jarvis'[/bold green]...")
+        console.print("[dim]Speak 'Jarvis' followed by your instruction. Press Ctrl+C to terminate.[/dim]\n")
+
+        def _on_wake(phrase: str):
+            console.print(f"[bold yellow]Wake keyword spotted:[/bold yellow] '{phrase}'! Listening for directive...")
+
+        def _on_directive(directive: str):
+            console.print(f"\n[bold green]Captured Directive:[/bold green] \"{directive}\"")
+            with console.status("[bold cyan]Executing directive with J.A.R.V.I.S....[/bold cyan]", spinner="dots"):
+                res = orchestrator.run(user_input=directive, chat_history=[])
+            console.print(Panel(Markdown(res.get("output", "")), title="[bold green]J.A.R.V.I.S. Response[/bold green]"))
+
+        listener.on_wake_detected = _on_wake
+        listener.start_listening(on_directive=_on_directive)
+
+        try:
+            while listener.is_listening():
+                time.sleep(0.5)
+        except KeyboardInterrupt:
+            listener.stop_listening()
+            console.print("\n[yellow]Wake-word listener deactivated.[/yellow]")
+        return
+
     from src.modules.voice.voice_bridge import transcribe_voice_directive
 
     if audio_file:
         console.print(f"[bold cyan]Voice Intelligence Engine:[/bold cyan] Transcribing {audio_file}...")
         with console.status("[bold cyan]Running Faster-Whisper transcription...[/bold cyan]", spinner="dots"):
-            transcript = transcribe_voice_directive(audio_file)
+            trans_res = transcribe_voice_directive(audio_file)
+            transcript = trans_res.get("text", "") if isinstance(trans_res, dict) else str(trans_res)
     else:
         console.print("[bold yellow]Microphone recording:[/bold yellow] Press Enter to finish dictation...")
         # Fallback microphone prompt
@@ -540,6 +613,39 @@ def voice_cmd(audio_file: Optional[str]):
         with console.status("[bold cyan]Executing directive...[/bold cyan]", spinner="dots"):
             res = orchestrator.run(user_input=transcript, chat_history=[])
         console.print(Panel(Markdown(res.get("output", "")), title="[bold green]J.A.R.V.I.S. Response[/bold green]"))
+
+
+# ----------------------------------------------------------------------
+# Command: Omnichannel Messaging Gateway
+# ----------------------------------------------------------------------
+@cli.command("gateway")
+@click.option("--telegram", is_flag=True, default=True, help="Launch Telegram Omnichannel Gateway.")
+@click.option("--token", default=None, help="Telegram Bot Token override (or TELEGRAM_BOT_TOKEN env var).")
+def gateway_cmd(telegram: bool, token: Optional[str]):
+    """Launch the Telegram Omnichannel Gateway for mobile and remote assistant control."""
+    from src.modules.gateway.telegram_bridge import get_telegram_gateway
+
+    gw = get_telegram_gateway(bot_token=token)
+    if not gw.is_configured:
+        console.print("[bold red]Telegram Gateway Error:[/bold red] No TELEGRAM_BOT_TOKEN provided or configured in .env.")
+        console.print("[dim]Set TELEGRAM_BOT_TOKEN in your environment or run: jarvis gateway --token <your_token>[/dim]")
+        return
+
+    console.print("[bold cyan]Omnichannel Gateway:[/bold cyan] Verifying bot credentials...")
+    info = gw.get_me()
+    if not info.get("ok"):
+        console.print(f"[bold red]Telegram Gateway Connection Failed:[/bold red] {info.get('description', 'Unknown error')}")
+        return
+
+    bot_user = info.get("result", {}).get("username", "UnknownBot")
+    console.print(f"[bold green][OK] Connected as @{bot_user}[/bold green]")
+    console.print("[dim]Long-polling active. Send voice memos, /goal, or chat messages to your Telegram bot. Press Ctrl+C to stop.[/dim]\n")
+
+    try:
+        gw.poll_forever()
+    except KeyboardInterrupt:
+        gw.stop()
+        console.print("\n[yellow]Telegram Gateway halted.[/yellow]")
 
 
 # ----------------------------------------------------------------------

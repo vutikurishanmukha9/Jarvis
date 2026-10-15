@@ -8,9 +8,12 @@ from .voice_bridge import (
     is_local_whisper_available,
     transcribe_voice_directive,
 )
+from .wake_word import WakeWordListener, get_wake_listener
 
 __all__ = [
     "transcribe_voice_directive",
     "is_local_whisper_available",
     "get_local_whisper_model",
+    "WakeWordListener",
+    "get_wake_listener",
 ]

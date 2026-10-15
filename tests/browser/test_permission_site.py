@@ -5,7 +5,6 @@ REQUIRE_HUMAN_APPROVAL, and DENY classifications.
 """
 
 from src.core.permission_gate import (
-    BrowserPermissionGate,
     PermissionPolicy,
     get_permission_gate,
 )
@@ -17,7 +16,17 @@ def test_permission_gate_allow_policies() -> None:
     gate = get_permission_gate()
     gate.reset_policies()
 
-    for perm in ["notifications", "clipboard", "clipboard-read", "clipboard-write", "read-text", "write-text", "copy", "fullscreen", "eme"]:
+    for perm in [
+        "notifications",
+        "clipboard",
+        "clipboard-read",
+        "clipboard-write",
+        "read-text",
+        "write-text",
+        "copy",
+        "fullscreen",
+        "eme",
+    ]:
         res = gate.evaluate_permission(perm)
         assert res.decision == PermissionPolicy.ALLOW, f"Expected ALLOW for {perm}, got {res.decision}"
         assert not res.requires_user_prompt
